@@ -5,15 +5,15 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>Yumalog</PackageId>
     <Version>1.0.0</Version>
-    <Authors>Corporate IT Team</Authors>
-    <Company>Your Company</Company>
+    <Authors>Adylsha Yumayev</Authors>
+    <Company>Yumayev Dev</Company>
     <Description>Centralized structured logging library for .NET Framework and .NET Core applications. Provides JSON-based logging with Grafana Loki integration via Grafana Alloy agent.</Description>
     <PackageTags>logging;serilog;structured-logging;grafana;loki;centralized-logging;enterprise</PackageTags>
     <PackageProjectUrl>https://github.com/AdylshaY/Yumalog</PackageProjectUrl>
     <RepositoryUrl>https://github.com/AdylshaY/Yumalog</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Copyright>Copyright (c) 2024</Copyright>
+    <Copyright>Copyright (c) 2026</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
