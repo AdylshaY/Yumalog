@@ -14,6 +14,7 @@ namespace Yumalog
         private static ICorporateLogger _instance;
         private static readonly object _lock = new object();
         private static bool _isInitialized = false;
+        private static bool _processExitHandlerRegistered = false;
 
         /// <summary>
         /// Gets the current logger instance. Must call Initialize first.
@@ -59,6 +60,9 @@ namespace Yumalog
 
                 _instance = LoggerFactory.CreateCorporateLogger(configuration);
                 _isInitialized = true;
+
+                // Register process exit handler for crash scenarios
+                RegisterProcessExitHandler();
             }
         }
 
@@ -82,6 +86,9 @@ namespace Yumalog
 
                 _instance = LoggerFactory.CreateCorporateLogger(configuration);
                 _isInitialized = true;
+
+                // Register process exit handler for crash scenarios
+                RegisterProcessExitHandler();
             }
         }
 
@@ -106,5 +113,46 @@ namespace Yumalog
         /// Checks if the logging system has been initialized.
         /// </summary>
         public static bool IsInitialized => _isInitialized;
+
+        /// <summary>
+        /// Registers a handler for process exit to ensure logs are flushed even in crash scenarios.
+        /// This provides a safety net when Shutdown() is not explicitly called.
+        /// </summary>
+        private static void RegisterProcessExitHandler()
+        {
+            if (_processExitHandlerRegistered)
+            {
+                return;
+            }
+
+            // AppDomain.ProcessExit is called when:
+            // - Application closes normally
+            // - Ctrl+C is pressed (console apps)
+            // - Windows service stops
+            // - Some types of unhandled exceptions
+            AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
+            _processExitHandlerRegistered = true;
+        }
+
+        private static void OnProcessExit(object sender, EventArgs e)
+        {
+            // Last chance to flush logs before process terminates
+            // This handler has a limited time window (~2-3 seconds on Windows)
+            lock (_lock)
+            {
+                if (_isInitialized && _instance != null)
+                {
+                    try
+                    {
+                        _instance.FlushAndShutdown();
+                    }
+                    catch
+                    {
+                        // Suppress exceptions during process exit
+                        // Nothing we can do at this point
+                    }
+                }
+            }
+        }
     }
 }

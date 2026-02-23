@@ -20,7 +20,7 @@ namespace Yumalog.Configuration
         /// <summary>
         /// Base directory for log files. Fixed to corporate standard.
         /// </summary>
-        public string BaseLogDirectory => @"C:\CorporateLogs";
+        public string BaseLogDirectory => @"C:\ServiceLogs";
 
         /// <summary>
         /// Full log directory path including application name.
@@ -78,7 +78,7 @@ namespace Yumalog.Configuration
             // Auto-detect environment if not provided
             if (string.IsNullOrWhiteSpace(Environment))
             {
-                Environment = System.Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") 
+                Environment = System.Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
                               ?? System.Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
                               ?? "Production";
             }

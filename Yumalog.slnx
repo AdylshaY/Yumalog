@@ -1,9 +1,9 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path=".gitattributes" />
-    <File Path=".github/System Context Corparete Logging.md" />
     <File Path=".gitignore" />
     <File Path="README.md" />
   </Folder>
+  <Project Path="Yumalog.Tests/Yumalog.Tests.csproj" Id="24e0bf50-cf79-4939-b44f-7b06fe56fa02" />
   <Project Path="Yumalog/Yumalog.csproj" />
 </Solution>
