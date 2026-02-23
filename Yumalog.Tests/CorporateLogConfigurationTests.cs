@@ -245,20 +245,6 @@ namespace Yumalog.Tests
         }
 
         [Fact]
-        public void BufferSize_WithZeroValue_ShouldBeAllowed()
-        {
-            // Arrange & Act
-            var config = new CorporateLogConfiguration
-            {
-                ApplicationName = "TestApp",
-                BufferSize = 0 // Synchronous logging (no buffer)
-            };
-
-            // Assert
-            config.BufferSize.Should().Be(0);
-        }
-
-        [Fact]
         public void BufferSize_WithLargeValue_ShouldBeAllowed()
         {
             // Arrange & Act

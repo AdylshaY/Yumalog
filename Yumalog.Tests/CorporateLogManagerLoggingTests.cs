@@ -541,11 +541,11 @@
             var config = new CorporateLogConfiguration
             {
                 ApplicationName = _testAppName,
-                BufferSize = 100 // Küçük buffer (test için)
+                BufferSize = 1000 // Küçük buffer (test için)
             };
             CorporateLogManager.Initialize(config);
 
-            var logCount = 500; // Buffer'dan çok daha fazla
+            var logCount = 50000; // Buffer'dan çok daha fazla
             var testMarker = $"OVERFLOW_TEST_{Guid.NewGuid()}";
 
             // Act - Buffer'ı aş
