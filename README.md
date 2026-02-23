@@ -1,55 +1,53 @@
 # Yumalog - Centralized Structured Logging
 
-Enterprise-grade centralized logging library for .NET Framework and .NET Core applications with **Grafana Loki** integration via **Grafana Alloy** agent.
+Centralized logging library for .NET Framework and .NET Core applications with Grafana Loki integration via Grafana Alloy agent.
 
 ---
 
-## 🎯 Overview
+## Overview
 
-Yumalog is a structured logging library designed for distributed financial systems running on Windows Servers. It provides a unified logging interface for both legacy .NET Framework Windows Services and modern .NET Core/.NET 8 Worker Services.
+Yumalog is a structured logging library for distributed systems running on Windows Servers. It provides a unified logging interface for both legacy .NET Framework applications and modern .NET Core/.NET 5+ applications.
 
-**Key Principle:** Applications write logs **locally** to JSON files in isolation, then **Grafana Alloy** agent collects and forwards them to **Loki** for centralized analysis via **Grafana**.
-
----
-
-## ✨ Features
-
-- ✅ **.NET Standard 2.0** - Compatible with .NET Framework 4.6.1+ and .NET Core 2.0+/.NET 5+/.NET 8+
-- 🎯 **Dual API** - Static manager for legacy apps, Dependency Injection extensions for modern apps
-- 📝 **Structured Logging** - JSON format with key-value pairs (prevents string concatenation)
-- 🔒 **Zero Data Loss Option** - Configurable buffer with blocking mode to ensure all logs are written
-- 🏷️ **Auto-Enrichment** - Application name, environment, machine name, process ID automatically added
-- 🔐 **File Isolation** - Each application writes to `C:\CorporateLogs\{ApplicationName}\` to prevent locking issues
-- ⚡ **High Performance** - Async sink with 50,000 message buffer (all operations are non-blocking)
-- 🛡️ **Graceful Shutdown** - Ensures all buffered logs are flushed before application exit
-- 🔧 **Configurable** - Buffer size, file retention, rolling interval, and more
-- 🚫 **No String Concatenation** - Forces structured logging with properties or objects
+**Architecture:** Applications write logs to JSON files locally (`C:\ServiceLogs\{ApplicationName}`), then Grafana Alloy agent collects and forwards them to Loki for centralized monitoring via Grafana.
 
 ---
 
-## 🏗️ Architecture
+## Features
+
+- **.NET Standard 2.0** - Compatible with .NET Framework 4.6.1+ and .NET Core 2.0+/.NET 5+
+- **Dual API** - Static manager for legacy apps, Dependency Injection for modern apps
+- **Structured Logging** - JSON format with key-value pairs
+- **Configurable Buffer** - 50,000 message buffer with optional blocking mode
+- **Auto-Enrichment** - Application name, environment, machine name, process ID
+- **File Isolation** - Each application writes to `C:\ServiceLogs\{ApplicationName}\`
+- **Async Sink** - Non-blocking logging operations via Serilog.Sinks.Async
+- **Graceful Shutdown** - Ensures buffered logs are flushed before exit
+- **Configurable** - Buffer size, file retention, rolling interval, file size limits
+
+---
+
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  Application (.NET Framework / .NET Core / .NET 8)              │
+│  Application (.NET Framework / .NET Core / .NET 5+)             │
 │  └─→ Yumalog Library                                            │
 │      └─→ Serilog.Sinks.Async (50k buffer, non-blocking)        │
-│          └─→ JSON File (C:\CorporateLogs\{AppName}\log-.json)  │
+│          └─→ JSON File (C:\ServiceLogs\{AppName}\log-.json)    │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ↓ (File watching)
 ┌─────────────────────────────────────────────────────────────────┐
 │  Grafana Alloy (Agent) - Installed once per server             │
-│  - Watches: C:\CorporateLogs\*\*.json                          │
+│  - Watches: C:\ServiceLogs\*\*.json                            │
 │  - Parses JSON and extracts labels                              │
-│  - Tracks file offset (survives network outages)                │
+│  - Tracks file offset                                            │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ↓ (HTTP Push API)
 ┌─────────────────────────────────────────────────────────────────┐
 │  Grafana Loki (Central Log Database)                            │
 │  - Stores logs with labels (app, env, host, level)             │
-│  - Efficient compression and retention                           │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ↓ (Query)
@@ -61,37 +59,30 @@ Yumalog is a structured logging library designed for distributed financial syste
 
 ---
 
-## 📦 Installation
+## Installation
 
-### From Azure Artifacts (Private Feed)
+### NuGet Package
 
 ```bash
-dotnet nuget add source https://your-org.pkgs.visualstudio.com/_packaging/YourFeed/nuget/v3/index.json --name AzureArtifacts
-
 dotnet add package Yumalog
 ```
 
-### Manual Installation
+### Manual Build
 
 ```bash
-# Clone repository
 git clone https://github.com/AdylshaY/Yumalog.git
-
-# Build and pack
 cd Yumalog
 dotnet pack --configuration Release
-
-# Install locally
 dotnet add package Yumalog --source ./Yumalog/bin/Release
 ```
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
-### Option 1: Legacy Applications (.NET Framework, Windows Services)
+### Legacy Applications (.NET Framework)
 
-Perfect for existing Windows Services without Dependency Injection.
+For applications without Dependency Injection:
 
 ```csharp
 using System;
@@ -102,16 +93,13 @@ class Program
 {
     static void Main()
     {
-        // Initialize at application startup
         CorporateLogManager.Initialize("MyWindowsService", "Production");
 
         try
         {
             var logger = CorporateLogManager.Current;
+            logger.LogInformation("Service started");
 
-            logger.LogInformation("Service started successfully");
-
-            // Process work...
             ProcessOrders(logger);
         }
         catch (Exception ex)
@@ -121,7 +109,6 @@ class Program
         }
         finally
         {
-            // Critical: Flush logs before exit
             CorporateLogManager.Shutdown();
         }
     }
@@ -139,11 +126,11 @@ class Program
 
 ---
 
-### Option 2: Modern Applications (.NET Core/.NET 8 Worker Services)
+### Modern Applications (.NET Core/.NET 5+)
 
-Uses built-in Dependency Injection.
+Uses Dependency Injection:
 
-#### **Program.cs**
+**Program.cs**
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
@@ -156,15 +143,14 @@ var host = Host.CreateDefaultBuilder(args)
         // Simple initialization
         services.AddCorporateLogging("MyWorkerService", "Production");
 
-        // OR with custom configuration
+        // OR with configuration
         services.AddCorporateLogging(config =>
         {
             config.ApplicationName = "MyWorkerService";
             config.Environment = "Production";
-            config.BufferSize = 100000;              // 100k for high-volume apps
-            config.BlockWhenFull = true;              // Zero-data-loss guarantee
-            config.RetainedFileCountLimit = 60;       // Keep 60 days
-            config.FileSizeLimitBytes = 200 * 1024 * 1024; // 200MB per file
+            config.BufferSize = 100000;
+            config.BlockWhenFull = true;
+            config.RetainedFileCountLimit = 60;
         });
 
         services.AddHostedService<OrderProcessorWorker>();
@@ -174,7 +160,7 @@ var host = Host.CreateDefaultBuilder(args)
 await host.RunAsync();
 ```
 
-#### **OrderProcessorWorker.cs**
+**OrderProcessorWorker.cs**
 
 ```csharp
 using System;
@@ -207,15 +193,13 @@ public class OrderProcessorWorker : BackgroundService
             {
                 _logger.LogError("Batch processing failed", ex, new Dictionary<string, object>
                 {
-                    { "ErrorType", ex.GetType().Name },
-                    { "Timestamp", DateTime.UtcNow }
+                    { "ErrorType", ex.GetType().Name }
                 });
             }
 
             await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
         }
 
-        // Flush remaining logs
         _logger.FlushAndShutdown();
     }
 
@@ -225,18 +209,15 @@ public class OrderProcessorWorker : BackgroundService
 
         _logger.LogInformation("Starting batch", new Dictionary<string, object>
         {
-            { "BatchId", batchId },
-            { "StartTime", DateTime.UtcNow }
+            { "BatchId", batchId }
         });
 
-        // Business logic...
         await Task.Delay(1000, ct);
 
         _logger.LogInformation("Batch completed", new Dictionary<string, object>
         {
             { "BatchId", batchId },
-            { "ProcessedCount", 42 },
-            { "Duration", 1.2 }
+            { "ProcessedCount", 42 }
         });
     }
 }
@@ -244,11 +225,11 @@ public class OrderProcessorWorker : BackgroundService
 
 ---
 
-## 📚 API Reference
+## API Reference
 
 ### ICorporateLogger Interface
 
-All methods are **non-blocking** (uses `Serilog.Sinks.Async` internally).
+All methods are non-blocking (uses `Serilog.Sinks.Async` internally).
 
 ```csharp
 void LogInformation(string message, IDictionary<string, object> properties = null);
@@ -260,22 +241,20 @@ void LogInformationObject(string message, object data);
 void FlushAndShutdown();
 ```
 
-#### Examples
+### Examples
 
 ```csharp
 // Information with properties
 logger.LogInformation("User logged in", new Dictionary<string, object>
 {
     { "UserId", "john.doe@company.com" },
-    { "LoginTime", DateTime.UtcNow },
     { "IPAddress", "192.168.1.100" }
 });
 
 // Warning
-logger.LogWarning("High memory usage detected", new Dictionary<string, object>
+logger.LogWarning("High memory usage", new Dictionary<string, object>
 {
-    { "MemoryMB", 1500 },
-    { "Threshold", 1024 }
+    { "MemoryMB", 1500 }
 });
 
 // Error with exception
@@ -287,64 +266,59 @@ catch (Exception ex)
 {
     logger.LogError("Database connection failed", ex, new Dictionary<string, object>
     {
-        { "ConnectionString", "Server=...(sanitized)" },
         { "RetryCount", 3 }
     });
 }
 
-// Debug (only if minimum level is Debug)
+// Debug
 logger.LogDebug("Cache hit", new Dictionary<string, object>
 {
-    { "Key", "user:12345" },
-    { "HitRate", 0.85 }
+    { "Key", "user:12345" }
 });
 
-// Fatal (critical failures)
-logger.LogFatal("Configuration file missing", new Exception("config.json not found"));
+// Fatal
+logger.LogFatal("Configuration missing", new Exception("config.json not found"));
 
-// Object logging (automatic destructuring)
+// Object logging
 logger.LogInformationObject("Order received", new
 {
     OrderId = 12345,
     CustomerId = "CUST-001",
-    Items = new[] { "Item1", "Item2" },
     TotalAmount = 1500.50m
 });
 ```
 
 ---
 
-## ⚙️ Configuration Options
+## Configuration Options
 
 ### CorporateLogConfiguration
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `ApplicationName` | `string` | **Required** | Used for directory and labeling (no special chars) |
-| `Environment` | `string` | Auto-detected | `Development`, `Staging`, `Production` |
-| `RollingIntervalDays` | `int` | `1` | Daily log file rolling |
-| `RetainedFileCountLimit` | `int` | `31` | Keep last 31 files |
-| `FileSizeLimitBytes` | `long?` | `104857600` (100MB) | Max file size before rolling |
-| `BufferSize` | `int` | `50000` | Async buffer capacity (messages) |
+| `ApplicationName` | `string` | **Required** | Application identifier used for directory |
+| `Environment` | `string` | Auto-detected | Environment name |
+| `RollingIntervalDays` | `int` | `1` | Log file rolling interval |
+| `RetainedFileCountLimit` | `int` | `31` | Number of log files to keep (min: 1) |
+| `FileSizeLimitBytes` | `long?` | `104857600` (100MB) | Max file size (min: 1MB) |
+| `BufferSize` | `int` | `50000` | Async buffer capacity (1,000-500,000) |
 | `BlockWhenFull` | `bool` | `true` | Block when buffer full to prevent log loss |
 
 **Read-Only Properties:**
 
 | Property | Value | Description |
 |----------|-------|-------------|
-| `BaseLogDirectory` | `C:\CorporateLogs` | Fixed corporate standard |
-| `LogDirectory` | `C:\CorporateLogs\{ApplicationName}` | Application-specific directory |
+| `BaseLogDirectory` | `C:\ServiceLogs` | Base directory for all logs |
+| `LogDirectory` | `C:\ServiceLogs\{ApplicationName}` | Application-specific directory |
 
----
+### Buffer Configuration
 
-### Buffer Configuration Guidance
-
-| Scenario | BufferSize | BlockWhenFull | Rationale |
-|----------|-----------|---------------|-----------|
-| **Low Traffic** (< 100 logs/sec) | `10000` | `true` | Small buffer, guaranteed delivery |
-| **Normal Traffic** (100-1000 logs/sec) | `50000` | `true` | Default - balanced |
-| **High Traffic** (> 1000 logs/sec) | `100000` | `true` | Large buffer for bursts |
-| **Performance Critical** | `50000` | `false` | ⚠️ Risk: drops logs if buffer fills |
+| Scenario | BufferSize | BlockWhenFull |
+|----------|-----------|---------------|
+| Low traffic (< 100 logs/sec) | `10000` | `true` |
+| Normal traffic (100-1000 logs/sec) | `50000` | `true` |
+| High traffic (> 1000 logs/sec) | `100000` | `true` |
+| Performance critical | `50000` | `false` |
 
 **Example:**
 
@@ -352,19 +326,19 @@ logger.LogInformationObject("Order received", new
 services.AddCorporateLogging(config =>
 {
     config.ApplicationName = "HighVolumeService";
-    config.BufferSize = 100000;      // Handle 100k message bursts
-    config.BlockWhenFull = true;      // Never lose logs
+    config.BufferSize = 100000;
+    config.BlockWhenFull = true;
 });
 ```
 
 ---
 
-## 📁 Log File Structure
+## Log File Structure
 
 ### Directory Layout
 
 ```
-C:\CorporateLogs\
+C:\ServiceLogs\
 ├── MyWindowsService\
 │   ├── log-20240115.json
 │   ├── log-20240116.json
@@ -420,38 +394,28 @@ Each log entry is a single-line JSON object:
 
 ---
 
-## 🔧 Grafana Alloy Configuration
+## Grafana Alloy Configuration
 
-Install **Grafana Alloy** once per server to collect logs from all applications.
-
-### Installation
-
-```powershell
-# Download from Grafana website
-# Install as Windows Service
-
-# Configure alloy-config.alloy
-```
+Install Grafana Alloy once per server to collect logs from all applications.
 
 ### alloy-config.alloy
 
 ```hcl
-// Watch all JSON files under C:\CorporateLogs
-local.file_match "corporate_logs" {
+// Watch all JSON files under C:\ServiceLogs
+local.file_match "service_logs" {
   path_targets = [{
-    __path__ = "C:/CorporateLogs/*/*.json"
+    __path__ = "C:/ServiceLogs/*/*.json"
   }]
 }
 
 // Read files with position tracking
-loki.source.file "corporate_logs" {
-  targets    = local.file_match.corporate_logs.targets
+loki.source.file "service_logs" {
+  targets    = local.file_match.service_logs.targets
   forward_to = [loki.process.parse_json.receiver]
 }
 
 // Parse JSON and extract labels
 loki.process "parse_json" {
-  // Extract fields from JSON
   stage.json {
     expressions = {
       timestamp   = "Timestamp",
@@ -464,7 +428,6 @@ loki.process "parse_json" {
     }
   }
 
-  // Create Loki labels
   stage.labels {
     values = {
       app   = "application",
@@ -474,7 +437,6 @@ loki.process "parse_json" {
     }
   }
 
-  // Parse timestamp
   stage.timestamp {
     source = "timestamp"
     format = "RFC3339"
@@ -487,34 +449,28 @@ loki.process "parse_json" {
 loki.write "default" {
   endpoint {
     url = "http://loki-server:3100/loki/api/v1/push"
-
-    // Optional: Basic auth
-    // basic_auth {
-    //   username = "loki"
-    //   password = "password"
-    // }
   }
 }
 ```
 
-### Verify Alloy is Working
+### Verify Configuration
 
 ```powershell
-# Check Alloy service status
+# Check Alloy service
 Get-Service "Grafana Alloy"
 
-# View Alloy logs
-Get-Content "C:\Program Files\GrafanaLabs\Alloy\data\alloy.log" -Tail 50
+# Verify log files
+Get-ChildItem "C:\ServiceLogs" -Recurse -Filter "*.json"
 
-# Test with a sample log
+# Test logging
 CorporateLogManager.Initialize("TestApp");
-CorporateLogManager.Current.LogInformation("Test from Alloy setup");
+CorporateLogManager.Current.LogInformation("Test message");
 CorporateLogManager.Shutdown();
 ```
 
 ---
 
-## 📊 Grafana Queries (LogQL)
+## Grafana Queries (LogQL)
 
 ### Basic Queries
 
@@ -523,7 +479,7 @@ CorporateLogManager.Shutdown();
 {app="MyWindowsService"}
 
 # Errors only
-{app="MyWindowsService"} |= "Error"
+{app="MyWindowsService", level="Error"}
 
 # Specific environment
 {env="Production"} 
@@ -532,7 +488,7 @@ CorporateLogManager.Shutdown();
 {app="MyWindowsService", env="Production", level="Error"}
 
 # Search in message
-{app="MyWindowsService"} |= "order" |= "failed"
+{app="MyWindowsService"} |= "order"
 ```
 
 ### Advanced Queries
@@ -542,213 +498,156 @@ CorporateLogManager.Shutdown();
 rate({app="MyWindowsService", level="Error"}[1m])
 
 # Top 10 error messages
-topk(10, 
-  count_over_time({app="MyWindowsService", level="Error"}[1h])
-)
+topk(10, count_over_time({level="Error"}[1h]) by (app))
 
 # JSON field extraction
-{app="MyWindowsService"} 
-  | json 
-  | Properties_OrderId = "12345"
+{app="MyWindowsService"} | json | Properties_OrderId = "12345"
 ```
 
 ---
 
-## 🎯 Best Practices
+## Best Practices
 
-### ✅ DO's
+### Do's
 
 ```csharp
-// ✅ Use structured properties
+// Use structured properties
 logger.LogInformation("Order processed", new Dictionary<string, object>
 {
     { "OrderId", orderId },
-    { "Amount", amount },
-    { "Duration", duration }
+    { "Amount", amount }
 });
 
-// ✅ Always initialize at startup
+// Initialize at startup
 static void Main()
 {
     CorporateLogManager.Initialize("MyApp");
-    // ... application code
+    // application code
 }
 
-// ✅ Always flush before exit
+// Always flush before exit
 finally
 {
     CorporateLogManager.Shutdown();
 }
 
-// ✅ Log exceptions with context
+// Log exceptions with context
 catch (Exception ex)
 {
     logger.LogError("Failed to process order", ex, new Dictionary<string, object>
     {
-        { "OrderId", orderId },
-        { "CustomerId", customerId }
+        { "OrderId", orderId }
     });
 }
 
-// ✅ Use object logging for complex data
+// Use object logging for complex data
 logger.LogInformationObject("Order details", new
 {
     Order = order,
-    Customer = customer,
-    Items = items
+    Customer = customer
 });
 ```
 
----
-
-### ❌ DON'Ts
+### Don'ts
 
 ```csharp
-// ❌ String concatenation (not searchable)
-logger.LogInformation($"Order {orderId} processed with amount {amount}");
+// Avoid string concatenation
+logger.LogInformation($"Order {orderId} processed");  // Not searchable
 
-// ❌ Forgetting to flush
+// Don't forget to flush
 Main()
 {
     CorporateLogManager.Initialize("MyApp");
-    // ... code
-    // ❌ Missing: CorporateLogManager.Shutdown();
+    // Missing: CorporateLogManager.Shutdown();
 }
 
-// ❌ Logging sensitive data
-logger.LogInformation("User login", new Dictionary<string, object>
+// Don't log sensitive data
+logger.LogInformation("Login", new Dictionary<string, object>
 {
-    { "Password", password }  // ❌ Never log passwords!
+    { "Password", password }  // Never log passwords
 });
 
-// ❌ Logging in tight loops without throttling
+// Don't log in tight loops
 for (int i = 0; i < 1000000; i++)
 {
-    logger.LogDebug($"Processing item {i}");  // ❌ Too many logs!
+    logger.LogDebug($"Item {i}");  // Too many logs
 }
 
-// ❌ Initializing multiple times
+// Don't initialize multiple times
 CorporateLogManager.Initialize("App1");
-CorporateLogManager.Initialize("App2");  // ❌ Throws exception
+CorporateLogManager.Initialize("App2");  // Throws exception
 ```
 
 ---
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
-### Issue: Logs Not Appearing in Grafana
+### Logs Not Appearing in Grafana
 
-**Symptoms:** Application writes logs but Grafana shows nothing.
-
-**Checklist:**
-1. ✅ Check Alloy service is running:
-   ```powershell
-   Get-Service "Grafana Alloy"
-   ```
-
-2. ✅ Verify log files exist:
-   ```powershell
-   Get-ChildItem "C:\CorporateLogs\MyApp"
-   ```
-
-3. ✅ Check Alloy configuration path matches:
-   ```hcl
-   __path__ = "C:/CorporateLogs/*/*.json"  # Must match
-   ```
-
-4. ✅ Review Alloy logs for errors:
-   ```powershell
-   Get-Content "C:\Program Files\GrafanaLabs\Alloy\data\alloy.log" -Tail 100
-   ```
-
-5. ✅ Test Loki connectivity:
-   ```powershell
-   Invoke-WebRequest -Uri "http://loki-server:3100/ready"
-   ```
-
----
-
-### Issue: Application Can't Write Logs
-
-**Symptoms:** `UnauthorizedAccessException` or empty log directory.
-
-**Solution:**
+**Check Alloy service:**
 ```powershell
-# Grant write permissions to service account
-icacls "C:\CorporateLogs" /grant "NT AUTHORITY\NETWORK SERVICE:(OI)(CI)M"
+Get-Service "Grafana Alloy"
+```
 
-# Or for specific app identity
-icacls "C:\CorporateLogs" /grant "DOMAIN\ServiceAccount:(OI)(CI)M"
+**Verify log files exist:**
+```powershell
+Get-ChildItem "C:\ServiceLogs\MyApp"
+```
+
+**Check Alloy configuration path:**
+```hcl
+__path__ = "C:/ServiceLogs/*/*.json"
+```
+
+**Test Loki connectivity:**
+```powershell
+Invoke-WebRequest -Uri "http://loki-server:3100/ready"
 ```
 
 ---
 
-### Issue: High Memory Usage
+### Application Can't Write Logs
 
-**Symptoms:** Application consumes excessive RAM.
+**Grant write permissions:**
+```powershell
+icacls "C:\ServiceLogs" /grant "NT AUTHORITY\NETWORK SERVICE:(OI)(CI)M"
+```
 
-**Cause:** Buffer size too large or logs not being flushed.
+---
 
-**Solution:**
+### High Memory Usage
+
+**Reduce buffer size:**
 ```csharp
 services.AddCorporateLogging(config =>
 {
     config.ApplicationName = "MyApp";
-    config.BufferSize = 10000;  // Reduce from 50k to 10k
+    config.BufferSize = 10000;
     config.BlockWhenFull = true;
 });
 ```
 
 ---
 
-### Issue: Duplicate Logs
+### Duplicate Logs
 
-**Symptoms:** Same log appears multiple times in Grafana.
-
-**Causes:**
-- Multiple `Initialize()` calls
-- Mixing static manager and DI in same app
-- Multiple Alloy instances reading same files
-
-**Solution:**
+**Initialize only once:**
 ```csharp
-// ✅ Initialize only once
 if (!CorporateLogManager.IsInitialized)
 {
     CorporateLogManager.Initialize("MyApp");
 }
-
-// ✅ Use only one approach (static OR DI, not both)
 ```
 
 ---
 
-### Issue: Logs Lost During High Traffic
-
-**Symptoms:** Missing log entries during peak load.
-
-**Cause:** `BlockWhenFull = false` with insufficient buffer.
-
-**Solution:**
-```csharp
-services.AddCorporateLogging(config =>
-{
-    config.ApplicationName = "MyApp";
-    config.BufferSize = 100000;      // Increase buffer
-    config.BlockWhenFull = true;      // Guarantee delivery
-});
-```
-
----
-
-## 🧪 Testing
+## Testing
 
 ### Unit Test Example
 
 ```csharp
 using Xunit;
 using Yumalog;
-using Yumalog.Configuration;
 
 public class LoggingTests : IDisposable
 {
@@ -786,57 +685,53 @@ public class LoggingTests : IDisposable
 
 ---
 
-## 📈 Performance Metrics
+## Performance
 
-| Scenario | Throughput | Latency | Notes |
-|----------|-----------|---------|-------|
-| Single log call | ~50k logs/sec | < 1ms | Non-blocking write to buffer |
-| Buffer flush | ~5k logs/sec | N/A | Background thread writes to disk |
-| High burst (50k logs) | Instant | 0ms | Buffered in memory, flushed async |
-| Buffer full (blockWhenFull=true) | Blocks | Variable | Waits for disk I/O |
-
----
-
-## 🔐 Security Considerations
-
-### ✅ Best Practices
-
-1. **Never log sensitive data:**
-   ```csharp
-   // ❌ Bad
-   logger.LogInformation("Login", new Dictionary<string, object>
-   {
-       { "Password", password }
-   });
-
-   // ✅ Good
-   logger.LogInformation("Login", new Dictionary<string, object>
-   {
-       { "Username", username },
-       { "Success", true }
-   });
-   ```
-
-2. **Sanitize connection strings:**
-   ```csharp
-   var sanitized = connectionString.Replace(password, "***");
-   logger.LogError("DB error", ex, new Dictionary<string, object>
-   {
-       { "ConnectionString", sanitized }
-   });
-   ```
-
-3. **File permissions:**
-   ```powershell
-   # Restrict access to log directory
-   icacls "C:\CorporateLogs" /inheritance:r
-   icacls "C:\CorporateLogs" /grant "Administrators:(OI)(CI)F"
-   icacls "C:\CorporateLogs" /grant "ServiceAccount:(OI)(CI)M"
-   ```
+| Scenario | Throughput | Notes |
+|----------|-----------|-------|
+| Single log call | ~50k logs/sec | Non-blocking write to buffer |
+| Buffer flush | ~5k logs/sec | Background thread writes to disk |
+| High burst | Instant | Buffered in memory |
 
 ---
 
-## 📖 Additional Resources
+## Security Considerations
+
+**Never log sensitive data:**
+```csharp
+// Bad
+logger.LogInformation("Login", new Dictionary<string, object>
+{
+    { "Password", password }
+});
+
+// Good
+logger.LogInformation("Login", new Dictionary<string, object>
+{
+    { "Username", username },
+    { "Success", true }
+});
+```
+
+**Sanitize connection strings:**
+```csharp
+var sanitized = connectionString.Replace(password, "***");
+logger.LogError("DB error", ex, new Dictionary<string, object>
+{
+    { "ConnectionString", sanitized }
+});
+```
+
+**Set file permissions:**
+```powershell
+icacls "C:\ServiceLogs" /inheritance:r
+icacls "C:\ServiceLogs" /grant "Administrators:(OI)(CI)F"
+icacls "C:\ServiceLogs" /grant "ServiceAccount:(OI)(CI)M"
+```
+
+---
+
+## Resources
 
 - [Serilog Documentation](https://serilog.net/)
 - [Grafana Alloy Documentation](https://grafana.com/docs/alloy/)
@@ -845,9 +740,9 @@ public class LoggingTests : IDisposable
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request.
+Contributions are welcome. Open an issue or submit a pull request.
 
 ### Development Setup
 
@@ -861,9 +756,14 @@ dotnet test
 
 ---
 
-## 🙏 Acknowledgments
+## License
 
-- [Serilog](https://serilog.net/) - Excellent structured logging library
-- [Grafana Labs](https://grafana.com/) - Loki and Alloy tools
+MIT License - See LICENSE file for details
+
+---
+
+## Acknowledgments
+
+Built with [Serilog](https://serilog.net/) and designed for [Grafana Loki](https://grafana.com/oss/loki/)
 
 ---
