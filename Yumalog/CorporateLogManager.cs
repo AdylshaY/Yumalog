@@ -149,7 +149,7 @@ namespace Yumalog
                     catch
                     {
                         // Suppress exceptions during process exit
-                        // Nothing we can do at this point
+                        // Cannot reliably log errors at this point without blocking
                     }
                 }
             }

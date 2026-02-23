@@ -2,7 +2,10 @@ namespace Yumalog.Implementation
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using Serilog.Core;
+    using Serilog.Events;
+    using Serilog.Parsing;
     using Yumalog.Abstractions;
 
     /// <summary>
@@ -46,7 +49,7 @@ namespace Yumalog.Implementation
 
         public void LogInformationObject(string message, object data)
         {
-            _logger.Information(message + " {@Data}", data);
+            _logger.Information("{Message} {@Data}", message, data);
         }
 
         #endregion
@@ -62,7 +65,7 @@ namespace Yumalog.Implementation
 
         #region Private Helpers
 
-        private void WriteLog(Serilog.Events.LogEventLevel level, string message, Exception exception, IDictionary<string, object> properties)
+        private void WriteLog(LogEventLevel level, string message, Exception exception, IDictionary<string, object> properties)
         {
             if (properties == null || properties.Count == 0)
             {
@@ -70,13 +73,20 @@ namespace Yumalog.Implementation
                 return;
             }
 
-            var enrichedLogger = _logger;
-            foreach (var prop in properties)
-            {
-                enrichedLogger = (Logger)enrichedLogger.ForContext(prop.Key, prop.Value);
-            }
+            // Optimization: Create LogEvent directly instead of chaining ForContext calls
+            // This avoids creating intermediate Logger instances for each property
+            var messageTemplate = new MessageTemplate(message, Enumerable.Empty<MessageTemplateToken>());
+            var logEventProperties = properties.Select(kvp =>
+                new LogEventProperty(kvp.Key, new ScalarValue(kvp.Value)));
 
-            enrichedLogger.Write(level, exception, message);
+            var logEvent = new LogEvent(
+                DateTimeOffset.Now,
+                level,
+                exception,
+                messageTemplate,
+                logEventProperties);
+
+            _logger.Write(logEvent);
         }
 
         #endregion

@@ -7,6 +7,10 @@ namespace Yumalog.Configuration
     /// </summary>
     public class CorporateLogConfiguration
     {
+        private int _bufferSize = 50000;
+        private int _retainedFileCountLimit = 31;
+        private long? _fileSizeLimitBytes = 100 * 1024 * 1024;
+
         /// <summary>
         /// Application name - used for directory creation and labeling. Required.
         /// </summary>
@@ -34,19 +38,52 @@ namespace Yumalog.Configuration
 
         /// <summary>
         /// Maximum number of log files to retain. Default is 31.
+        /// Must be at least 1.
         /// </summary>
-        public int RetainedFileCountLimit { get; set; } = 31;
+        public int RetainedFileCountLimit
+        {
+            get => _retainedFileCountLimit;
+            set
+            {
+                if (value < 1)
+                    throw new ArgumentOutOfRangeException(nameof(RetainedFileCountLimit),
+                        "Must retain at least 1 log file.");
+                _retainedFileCountLimit = value;
+            }
+        }
 
         /// <summary>
         /// File size limit in bytes. Default is 100MB.
+        /// Must be at least 1MB if specified.
         /// </summary>
-        public long? FileSizeLimitBytes { get; set; } = 100 * 1024 * 1024;
+        public long? FileSizeLimitBytes
+        {
+            get => _fileSizeLimitBytes;
+            set
+            {
+                if (value.HasValue && value.Value < 1024 * 1024)
+                    throw new ArgumentOutOfRangeException(nameof(FileSizeLimitBytes),
+                        "File size limit must be at least 1MB (1048576 bytes).");
+                _fileSizeLimitBytes = value;
+            }
+        }
 
         /// <summary>
         /// Async buffer size for in-memory queue. Default is 50000 messages.
         /// Increase for high-volume applications to handle burst traffic.
+        /// Must be between 1,000 and 500,000.
         /// </summary>
-        public int BufferSize { get; set; } = 50000;
+        public int BufferSize
+        {
+            get => _bufferSize;
+            set
+            {
+                if (value < 1000 || value > 500000)
+                    throw new ArgumentOutOfRangeException(nameof(BufferSize),
+                        "BufferSize must be between 1,000 and 500,000 messages.");
+                _bufferSize = value;
+            }
+        }
 
         /// <summary>
         /// Block application thread when buffer is full to prevent log loss.
