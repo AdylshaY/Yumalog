@@ -55,7 +55,7 @@ namespace Yumalog.Tests
                 BufferSize = 10000,
                 RetainedFileCountLimit = 7,
                 FileSizeLimitBytes = 50 * 1024 * 1024,
-                RollingIntervalDays = 7,
+                RollingIntervalDays = 1,
                 BlockWhenFull = false
             };
 
@@ -66,7 +66,7 @@ namespace Yumalog.Tests
             config.BufferSize.Should().Be(10000);
             config.RetainedFileCountLimit.Should().Be(7);
             config.FileSizeLimitBytes.Should().Be(50 * 1024 * 1024);
-            config.RollingIntervalDays.Should().Be(7);
+            config.RollingIntervalDays.Should().Be(1);
             config.BlockWhenFull.Should().BeFalse();
         }
 
@@ -285,6 +285,21 @@ namespace Yumalog.Tests
 
             act.Should().Throw<ArgumentException>()
                 .WithParameterName("BaseLogDirectory");
+        }
+
+        [Fact]
+        public void Validate_WithRollingIntervalDaysOtherThanOne_ShouldThrowArgumentOutOfRangeException()
+        {
+            var config = new CorporateLogConfiguration
+            {
+                ApplicationName = "TestApp",
+                RollingIntervalDays = 7
+            };
+
+            Action act = () => config.Validate();
+
+            act.Should().Throw<ArgumentOutOfRangeException>()
+                .WithParameterName("RollingIntervalDays");
         }
 
         [Fact]

@@ -1,6 +1,7 @@
 namespace Yumalog.Configuration
 {
     using System;
+    using Yumalog.Diagnostics;
 
     /// <summary>
     /// Configuration settings that control Yumalog file output and buffering behavior.
@@ -8,8 +9,10 @@ namespace Yumalog.Configuration
     public class CorporateLogConfiguration
     {
         private const string DefaultBaseLogDirectory = @"C:\ServiceLogs";
+        private TimeSpan _asyncBufferMonitorInterval = TimeSpan.FromSeconds(1);
         private int _bufferSize = 50000;
         private int _retainedFileCountLimit = 31;
+        private int _asyncBufferWarningUsageThresholdPercentage = 80;
         private long? _fileSizeLimitBytes = 100 * 1024 * 1024;
 
         /// <summary>
@@ -36,9 +39,12 @@ namespace Yumalog.Configuration
         public string LogDirectory => System.IO.Path.Combine(BaseLogDirectory, ApplicationName);
 
         /// <summary>
-        /// Reserved for future rolling policy customization.
-        /// The current file sink implementation always rolls daily.
+        /// Rolling interval expressed in days.
         /// </summary>
+        /// <remarks>
+        /// Yumalog currently supports only daily rolling for Windows Service deployments.
+        /// Set this value to <c>1</c>.
+        /// </remarks>
         public int RollingIntervalDays { get; set; } = 1;
 
         /// <summary>
@@ -96,6 +102,46 @@ namespace Yumalog.Configuration
         public bool BlockWhenFull { get; set; } = true;
 
         /// <summary>
+        /// Interval used to sample async buffer health metrics when diagnostics are enabled.
+        /// </summary>
+        public TimeSpan AsyncBufferMonitorInterval
+        {
+            get => _asyncBufferMonitorInterval;
+            set
+            {
+                if (value <= TimeSpan.Zero)
+                    throw new ArgumentOutOfRangeException(nameof(AsyncBufferMonitorInterval),
+                        "AsyncBufferMonitorInterval must be greater than zero.");
+                _asyncBufferMonitorInterval = value;
+            }
+        }
+
+        /// <summary>
+        /// Buffer usage percentage that triggers a high-usage diagnostic event.
+        /// </summary>
+        public int AsyncBufferWarningUsageThresholdPercentage
+        {
+            get => _asyncBufferWarningUsageThresholdPercentage;
+            set
+            {
+                if (value < 1 || value > 100)
+                    throw new ArgumentOutOfRangeException(nameof(AsyncBufferWarningUsageThresholdPercentage),
+                        "AsyncBufferWarningUsageThresholdPercentage must be between 1 and 100.");
+                _asyncBufferWarningUsageThresholdPercentage = value;
+            }
+        }
+
+        /// <summary>
+        /// Optional callback invoked for lifecycle diagnostics emitted by Yumalog.
+        /// </summary>
+        /// <remarks>
+        /// Use this hook to observe shutdown start, completion, or failure during rollout and operations.
+        /// The callback should be lightweight and non-throwing. When diagnostics are enabled, Yumalog also
+        /// emits async buffer monitoring events for queue pressure and dropped-message visibility.
+        /// </remarks>
+        public Action<CorporateLogDiagnosticEvent> DiagnosticListener { get; set; }
+
+        /// <summary>
         /// Validates required configuration values and resolves missing defaults.
         /// </summary>
         public void Validate()
@@ -113,6 +159,12 @@ namespace Yumalog.Configuration
             if (!System.IO.Path.IsPathRooted(BaseLogDirectory))
             {
                 throw new ArgumentException("BaseLogDirectory must be an absolute path.", nameof(BaseLogDirectory));
+            }
+
+            if (RollingIntervalDays != 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(RollingIntervalDays),
+                    "Yumalog currently supports only daily rolling. Set RollingIntervalDays to 1.");
             }
 
             // Validate the application name before it is used as part of a directory path.

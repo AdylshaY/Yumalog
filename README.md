@@ -23,6 +23,7 @@ Yumalog is a structured logging library for distributed systems running on Windo
 - **Async Sink** - Non-blocking logging operations via Serilog.Sinks.Async
 - **Graceful Shutdown** - Ensures buffered logs are flushed before exit
 - **Configurable** - Buffer size, file retention, rolling interval, file size limits
+- **Runtime Diagnostics** - Shutdown and async buffer health events for rollout and operations
 
 ---
 
@@ -151,6 +152,11 @@ var host = Host.CreateDefaultBuilder(args)
             config.BufferSize = 100000;
             config.BlockWhenFull = true;
             config.RetainedFileCountLimit = 60;
+            config.DiagnosticListener = diagnostic =>
+            {
+                System.Diagnostics.Trace.WriteLine(
+                    $"{diagnostic.TimestampUtc:o} {diagnostic.EventType} {diagnostic.Message}");
+            };
         });
 
         services.AddHostedService<OrderProcessorWorker>();
@@ -227,7 +233,9 @@ public class OrderProcessorWorker : BackgroundService
 
 ### ICorporateLogger Interface
 
-All methods are non-blocking (uses `Serilog.Sinks.Async` internally).
+All methods write through `Serilog.Sinks.Async`.
+Under normal operation this keeps file I/O off the caller thread.
+If `BlockWhenFull = true`, the caller can still wait temporarily when the async queue is saturated.
 
 ```csharp
 void LogInformation(string message, IDictionary<string, object> properties = null);
@@ -297,18 +305,21 @@ logger.LogInformationObject("Order received", new
 |----------|------|---------|-------------|
 | `ApplicationName` | `string` | **Required** | Application identifier used for directory |
 | `Environment` | `string` | Auto-detected | Environment name |
-| `RollingIntervalDays` | `int` | `1` | Log file rolling interval |
+| `BaseLogDirectory` | `string` | `C:\ServiceLogs` | Root directory for application log folders |
+| `RollingIntervalDays` | `int` | `1` | Daily rolling interval. Only `1` is currently supported. |
 | `RetainedFileCountLimit` | `int` | `31` | Number of log files to keep (min: 1) |
 | `FileSizeLimitBytes` | `long?` | `104857600` (100MB) | Max file size (min: 1MB) |
 | `BufferSize` | `int` | `50000` | Async buffer capacity (1,000-500,000) |
 | `BlockWhenFull` | `bool` | `true` | Block when buffer full to prevent log loss |
+| `AsyncBufferMonitorInterval` | `TimeSpan` | `00:00:01` | Sampling interval for async buffer diagnostics |
+| `AsyncBufferWarningUsageThresholdPercentage` | `int` | `80` | High-usage warning threshold for async buffer diagnostics |
+| `DiagnosticListener` | `Action<CorporateLogDiagnosticEvent>` | `null` | Optional callback for logger lifecycle and buffer health events |
 
-**Read-Only Properties:**
+**Derived Property:**
 
 | Property | Value | Description |
 |----------|-------|-------------|
-| `BaseLogDirectory` | `C:\ServiceLogs` | Base directory for all logs |
-| `LogDirectory` | `C:\ServiceLogs\{ApplicationName}` | Application-specific directory |
+| `LogDirectory` | `{BaseLogDirectory}\{ApplicationName}` | Application-specific directory |
 
 ### Buffer Configuration
 
@@ -327,8 +338,159 @@ services.AddCorporateLogging(config =>
     config.ApplicationName = "HighVolumeService";
     config.BufferSize = 100000;
     config.BlockWhenFull = true;
+    config.AsyncBufferWarningUsageThresholdPercentage = 75;
 });
 ```
+
+### Custom Log Directory
+
+```csharp
+services.AddCorporateLogging(config =>
+{
+    config.ApplicationName = "PaymentsService";
+    config.BaseLogDirectory = @"D:\ServiceLogs";
+});
+```
+
+Yumalog validates the configured directory during logger creation.
+If the folder cannot be created or written to, startup fails fast instead of silently losing logs later.
+
+---
+
+## Diagnostics
+
+### What Diagnostics Are For
+
+Yumalog diagnostics are infrastructure health signals, not business logs.
+
+Use normal application logs for events such as:
+
+- Order processed
+- Batch failed
+- Service started
+
+Use diagnostics for questions such as:
+
+- Did the logger shut down cleanly?
+- Is the async queue approaching capacity?
+- Were any messages dropped because the buffer overflowed?
+
+Diagnostics are most useful during pilot rollout, load testing, production troubleshooting, and capacity tuning.
+
+### How Diagnostics Work
+
+If you provide a callback through `CorporateLogConfiguration.DiagnosticListener`, Yumalog invokes it when important lifecycle or buffer-health events occur.
+
+```csharp
+services.AddCorporateLogging(config =>
+{
+    config.ApplicationName = "OrderService";
+    config.DiagnosticListener = diagnostic =>
+    {
+        System.Diagnostics.Trace.WriteLine(
+            $"{diagnostic.TimestampUtc:o} " +
+            $"{diagnostic.EventType} " +
+            $"{diagnostic.ApplicationName} " +
+            $"{diagnostic.Message}");
+    };
+});
+```
+
+Legacy usage works the same way:
+
+```csharp
+CorporateLogManager.Initialize(new CorporateLogConfiguration
+{
+    ApplicationName = "LegacyService",
+    DiagnosticListener = diagnostic =>
+    {
+        System.Diagnostics.Trace.WriteLine(
+            $"{diagnostic.TimestampUtc:o} {diagnostic.EventType} {diagnostic.Message}");
+    }
+});
+```
+
+### Shutdown Diagnostics
+
+These events are emitted when Yumalog is flushing buffered events and shutting down:
+
+- `ShutdownStarted` - Logger shutdown began.
+- `ShutdownCompleted` - Logger shutdown finished successfully.
+- `ShutdownFailed` - Logger shutdown failed before completion.
+
+These events tell you whether the logger completed an orderly shutdown.
+
+### Async Buffer Diagnostics
+
+These events are emitted by the async sink monitor:
+
+- `AsyncBufferMonitoringStarted` - Async queue monitoring started.
+- `AsyncBufferMonitoringStopped` - Async queue monitoring stopped.
+- `AsyncBufferHighUsage` - Queue usage crossed the configured warning threshold.
+- `AsyncBufferDroppedMessages` - The async queue dropped one or more events because it was full.
+
+These events tell you whether the current buffer configuration is healthy under real traffic.
+
+### Diagnostic Event Payload
+
+Each diagnostic event includes the following information:
+
+| Property | Description |
+|----------|-------------|
+| `EventType` | Type of diagnostic event |
+| `ApplicationName` | Application that owns the logger |
+| `LogDirectory` | Directory used by the file sink |
+| `Message` | Human-readable description |
+| `Exception` | Optional exception for failure events |
+| `TimestampUtc` | UTC timestamp |
+| `BufferSize` | Queue capacity, when applicable |
+| `BufferCount` | Current queue depth, when applicable |
+| `DroppedMessagesCount` | Total dropped messages observed, when applicable |
+
+### Recommended Production Usage
+
+Use a lightweight, non-throwing callback and route diagnostics to a separate operational channel such as `Trace`, Windows Event Log, an internal metric sink, or a health telemetry stream.
+
+```csharp
+services.AddCorporateLogging(config =>
+{
+    config.ApplicationName = "OrdersService";
+    config.BufferSize = 100000;
+    config.BlockWhenFull = true;
+    config.AsyncBufferWarningUsageThresholdPercentage = 80;
+    config.AsyncBufferMonitorInterval = TimeSpan.FromSeconds(1);
+    config.DiagnosticListener = diagnostic =>
+    {
+        System.Diagnostics.Trace.WriteLine(
+            $"[{diagnostic.EventType}] " +
+            $"App={diagnostic.ApplicationName}; " +
+            $"Dir={diagnostic.LogDirectory}; " +
+            $"Buffer={diagnostic.BufferCount}/{diagnostic.BufferSize}; " +
+            $"Dropped={diagnostic.DroppedMessagesCount}; " +
+            $"Message={diagnostic.Message}");
+    };
+});
+```
+
+### How To Interpret Diagnostics
+
+#### During rollout
+
+- Watch for `ShutdownCompleted` on controlled service stops.
+- Watch for `AsyncBufferHighUsage` to identify services that need larger buffers.
+- Treat `AsyncBufferDroppedMessages` as a sign that logs were lost under current settings.
+
+#### During troubleshooting
+
+- Missing tail logs: check whether `ShutdownStarted` and `ShutdownCompleted` were both emitted.
+- Suspected overload: check for `AsyncBufferHighUsage` and `AsyncBufferDroppedMessages`.
+
+### Important Guidance
+
+- Keep the diagnostic callback lightweight.
+- Do not throw exceptions from the callback.
+- Do not call Yumalog again from inside the diagnostic callback.
+- Treat diagnostics as infrastructure health signals, not business logs.
 
 ---
 
@@ -545,6 +707,17 @@ logger.LogInformationObject("Order details", new
     Order = order,
     Customer = customer
 });
+
+// Use diagnostics during rollout and operations
+services.AddCorporateLogging(config =>
+{
+    config.ApplicationName = "MyApp";
+    config.DiagnosticListener = diagnostic =>
+    {
+        System.Diagnostics.Trace.WriteLine(
+            $"{diagnostic.TimestampUtc:o} {diagnostic.EventType} {diagnostic.Message}");
+    };
+});
 ```
 
 ### Don'ts
@@ -575,6 +748,12 @@ for (int i = 0; i < 1000000; i++)
 // Don't initialize multiple times
 CorporateLogManager.Initialize("App1");
 CorporateLogManager.Initialize("App2");  // Throws exception
+
+// Don't do heavy or recursive work inside the diagnostic callback
+config.DiagnosticListener = diagnostic =>
+{
+    logger.LogInformation("Diagnostic callback");  // Avoid logging through Yumalog here
+};
 ```
 
 ---
@@ -623,6 +802,46 @@ services.AddCorporateLogging(config =>
     config.ApplicationName = "MyApp";
     config.BufferSize = 10000;
     config.BlockWhenFull = true;
+});
+```
+
+**Or inspect diagnostics before changing durability-related settings:**
+
+```csharp
+services.AddCorporateLogging(config =>
+{
+    config.ApplicationName = "MyApp";
+    config.DiagnosticListener = diagnostic =>
+    {
+        if (diagnostic.EventType == CorporateLogDiagnosticEventType.AsyncBufferHighUsage)
+        {
+            System.Diagnostics.Trace.WriteLine(
+                $"Buffer pressure detected: {diagnostic.BufferCount}/{diagnostic.BufferSize}");
+        }
+    };
+});
+```
+
+If `AsyncBufferHighUsage` appears frequently, increase `BufferSize` or reduce log volume.
+If `AsyncBufferDroppedMessages` appears, logs were lost because the queue was full.
+
+---
+
+### Verifying Logger Shutdown
+
+**Use diagnostics to confirm orderly shutdown:**
+
+```csharp
+services.AddCorporateLogging(config =>
+{
+    config.ApplicationName = "MyApp";
+    config.DiagnosticListener = diagnostic =>
+    {
+        if (diagnostic.EventType == CorporateLogDiagnosticEventType.ShutdownCompleted)
+        {
+            System.Diagnostics.Trace.WriteLine("Logger shutdown completed successfully.");
+        }
+    };
 });
 ```
 

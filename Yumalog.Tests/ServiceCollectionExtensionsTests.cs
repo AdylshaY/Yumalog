@@ -2,6 +2,7 @@ namespace Yumalog.Tests
 {
     using System;
     using System.Collections.Concurrent;
+    using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Threading;
@@ -11,6 +12,7 @@ namespace Yumalog.Tests
     using Xunit;
     using Yumalog.Abstractions;
     using Yumalog.Configuration;
+    using Yumalog.Diagnostics;
     using Yumalog.Extensions;
 
     public class ServiceCollectionExtensionsTests : IDisposable
@@ -224,6 +226,32 @@ namespace Yumalog.Tests
 
             markerCount.Should().Be(acceptedMessageCount,
                 "every log call that returned successfully before shutdown should be persisted");
+        }
+
+        [Fact]
+        public void AddCorporateLogging_WhenProviderIsDisposed_ShouldEmitShutdownDiagnostics()
+        {
+            var diagnostics = new List<CorporateLogDiagnosticEvent>();
+            var services = new ServiceCollection();
+            services.AddCorporateLogging(new CorporateLogConfiguration
+            {
+                ApplicationName = _testAppName,
+                BaseLogDirectory = _testBaseDirectory,
+                DiagnosticListener = diagnostics.Add
+            });
+
+            var provider = services.BuildServiceProvider();
+            var logger = provider.GetRequiredService<ICorporateLogger>();
+            logger.LogInformation("Diagnostic shutdown test");
+
+            provider.Dispose();
+
+            diagnostics.Select(d => d.EventType).Should().ContainInOrder(
+                CorporateLogDiagnosticEventType.ShutdownStarted,
+                CorporateLogDiagnosticEventType.ShutdownCompleted);
+
+            diagnostics.Should().OnlyContain(d => d.ApplicationName == _testAppName);
+            diagnostics.Should().OnlyContain(d => d.LogDirectory == _testLogDirectory);
         }
 
         private static int CountMessagesContaining(string logContent, string marker)

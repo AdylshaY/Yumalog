@@ -11,6 +11,7 @@
     using System.Threading.Tasks;
     using Xunit;
     using Yumalog.Configuration;
+    using Yumalog.Diagnostics;
 
     /// <summary>
     /// Tests for actual logging functionality of CorporateLogManager.
@@ -750,6 +751,27 @@
 
             markerCount.Should().Be(acceptedMessageCount,
                 "every log call that returned successfully before legacy shutdown should be persisted");
+        }
+
+        [Fact]
+        public void Shutdown_WhenCalledExplicitly_ShouldEmitShutdownDiagnostics()
+        {
+            var diagnostics = new List<CorporateLogDiagnosticEvent>();
+            CorporateLogManager.Initialize(new CorporateLogConfiguration
+            {
+                ApplicationName = _testAppName,
+                DiagnosticListener = diagnostics.Add
+            });
+
+            CorporateLogManager.Current.LogInformation("Legacy diagnostic shutdown test");
+            CorporateLogManager.Shutdown();
+
+            diagnostics.Select(d => d.EventType).Should().ContainInOrder(
+                CorporateLogDiagnosticEventType.ShutdownStarted,
+                CorporateLogDiagnosticEventType.ShutdownCompleted);
+
+            diagnostics.Should().OnlyContain(d => d.ApplicationName == _testAppName);
+            diagnostics.Should().OnlyContain(d => d.LogDirectory == _testLogDirectory);
         }
 
         #region Helper Methods

@@ -5,6 +5,7 @@ namespace Yumalog.Implementation
     using Serilog;
     using Serilog.Core;
     using Serilog.Formatting.Json;
+    using Serilog.Sinks.Async;
     using Yumalog.Configuration;
 
     /// <summary>
@@ -29,8 +30,10 @@ namespace Yumalog.Implementation
             EnsureLogDirectoryReady(configuration.LogDirectory);
 
             var logFilePath = Path.Combine(configuration.LogDirectory, "log-.json");
+            var monitor = CreateAsyncBufferDiagnosticMonitor(configuration);
 
             // The async wrapper keeps normal log writes off the file I/O path.
+            // Rolling is fixed to daily; validation rejects unsupported RollingIntervalDays values.
             // When BlockWhenFull is true, callers will wait instead of losing events during bursts.
             var logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
@@ -46,7 +49,7 @@ namespace Yumalog.Implementation
                     fileSizeLimitBytes: configuration.FileSizeLimitBytes,
                     shared: false, // Prevent file locking issues
                     rollOnFileSizeLimit: true
-                ), bufferSize: configuration.BufferSize, blockWhenFull: configuration.BlockWhenFull)
+                ), bufferSize: configuration.BufferSize, blockWhenFull: configuration.BlockWhenFull, monitor: monitor)
                 .CreateLogger();
 
             return logger;
@@ -60,7 +63,11 @@ namespace Yumalog.Implementation
         public static SerilogCorporateLogger CreateCorporateLogger(CorporateLogConfiguration configuration)
         {
             var serilogLogger = CreateLogger(configuration);
-            return new SerilogCorporateLogger(serilogLogger);
+            return new SerilogCorporateLogger(
+                serilogLogger,
+                configuration.ApplicationName,
+                configuration.LogDirectory,
+                configuration.DiagnosticListener);
         }
 
         /// <summary>
@@ -86,6 +93,21 @@ namespace Yumalog.Implementation
                     $"The configured log directory '{logDirectory}' could not be created or written to.",
                     ex);
             }
+        }
+
+        private static IAsyncLogEventSinkMonitor CreateAsyncBufferDiagnosticMonitor(CorporateLogConfiguration configuration)
+        {
+            if (configuration.DiagnosticListener == null)
+            {
+                return null;
+            }
+
+            return new AsyncBufferDiagnosticMonitor(
+                configuration.ApplicationName,
+                configuration.LogDirectory,
+                configuration.DiagnosticListener,
+                configuration.AsyncBufferMonitorInterval,
+                configuration.AsyncBufferWarningUsageThresholdPercentage);
         }
     }
 }
