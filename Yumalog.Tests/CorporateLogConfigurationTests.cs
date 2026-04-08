@@ -51,6 +51,7 @@ namespace Yumalog.Tests
             {
                 ApplicationName = "TestApp",
                 Environment = "Staging",
+                BaseLogDirectory = @"D:\ServiceLogs",
                 BufferSize = 10000,
                 RetainedFileCountLimit = 7,
                 FileSizeLimitBytes = 50 * 1024 * 1024,
@@ -61,6 +62,7 @@ namespace Yumalog.Tests
             // Assert
             config.ApplicationName.Should().Be("TestApp");
             config.Environment.Should().Be("Staging");
+            config.BaseLogDirectory.Should().Be(@"D:\ServiceLogs");
             config.BufferSize.Should().Be(10000);
             config.RetainedFileCountLimit.Should().Be(7);
             config.FileSizeLimitBytes.Should().Be(50 * 1024 * 1024);
@@ -143,7 +145,7 @@ namespace Yumalog.Tests
         }
 
         [Fact]
-        public void BaseLogDirectory_ShouldBeFixedPath()
+        public void BaseLogDirectory_ShouldDefaultToCorporatePath()
         {
             // Arrange & Act
             var config = new CorporateLogConfiguration
@@ -153,6 +155,18 @@ namespace Yumalog.Tests
 
             // Assert
             config.BaseLogDirectory.Should().Be(@"C:\ServiceLogs");
+        }
+
+        [Fact]
+        public void LogDirectory_WithCustomBaseLogDirectory_ShouldBuildCorrectPath()
+        {
+            var config = new CorporateLogConfiguration
+            {
+                ApplicationName = "MyCustomApp",
+                BaseLogDirectory = @"D:\CustomLogs"
+            };
+
+            config.LogDirectory.Should().Be(Path.Combine(@"D:\CustomLogs", "MyCustomApp"));
         }
 
         [Theory]
@@ -242,6 +256,35 @@ namespace Yumalog.Tests
             // Assert
             config.Environment.Should().Be("CustomEnvironment",
                 "explicitly set environment should not be overridden by auto-detection");
+        }
+
+        [Fact]
+        public void Validate_WithCustomAbsoluteBaseLogDirectory_ShouldNotThrowException()
+        {
+            var config = new CorporateLogConfiguration
+            {
+                ApplicationName = "TestApp",
+                BaseLogDirectory = @"D:\ServiceLogs"
+            };
+
+            Action act = () => config.Validate();
+
+            act.Should().NotThrow();
+        }
+
+        [Fact]
+        public void Validate_WithRelativeBaseLogDirectory_ShouldThrowArgumentException()
+        {
+            var config = new CorporateLogConfiguration
+            {
+                ApplicationName = "TestApp",
+                BaseLogDirectory = "RelativeLogs"
+            };
+
+            Action act = () => config.Validate();
+
+            act.Should().Throw<ArgumentException>()
+                .WithParameterName("BaseLogDirectory");
         }
 
         [Fact]

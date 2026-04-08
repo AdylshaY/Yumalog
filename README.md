@@ -199,8 +199,6 @@ public class OrderProcessorWorker : BackgroundService
 
             await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
         }
-
-        _logger.FlushAndShutdown();
     }
 
     private async Task ProcessBatch(CancellationToken ct)
@@ -238,8 +236,9 @@ void LogError(string message, Exception exception = null, IDictionary<string, ob
 void LogDebug(string message, IDictionary<string, object> properties = null);
 void LogFatal(string message, Exception exception = null, IDictionary<string, object> properties = null);
 void LogInformationObject(string message, object data);
-void FlushAndShutdown();
 ```
+
+For Dependency Injection usage, logger shutdown is container-managed. Consumers should not flush or dispose the logger manually during normal Windows Service execution.
 
 ### Examples
 

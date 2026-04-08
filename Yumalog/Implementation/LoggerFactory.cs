@@ -5,17 +5,20 @@ namespace Yumalog.Implementation
     using Serilog;
     using Serilog.Core;
     using Serilog.Formatting.Json;
-    using Yumalog.Abstractions;
     using Yumalog.Configuration;
 
     /// <summary>
-    /// Factory class for creating configured Serilog loggers.
+    /// Builds the internal Serilog pipeline used by Yumalog.
     /// </summary>
     internal static class LoggerFactory
     {
+        private const string WriteProbeFileName = ".yumalog-write-test";
+
         /// <summary>
-        /// Creates a Serilog logger with corporate standards.
+        /// Creates and configures the underlying Serilog logger instance.
         /// </summary>
+        /// <param name="configuration">Validated runtime settings for file output and buffering.</param>
+        /// <returns>A configured Serilog logger that writes JSON files to the application log directory.</returns>
         public static Logger CreateLogger(CorporateLogConfiguration configuration)
         {
             if (configuration == null)
@@ -23,17 +26,12 @@ namespace Yumalog.Implementation
 
             configuration.Validate();
 
-            // Ensure log directory exists
-            if (!Directory.Exists(configuration.LogDirectory))
-            {
-                Directory.CreateDirectory(configuration.LogDirectory);
-            }
+            EnsureLogDirectoryReady(configuration.LogDirectory);
 
             var logFilePath = Path.Combine(configuration.LogDirectory, "log-.json");
 
-            // Configure Serilog with async sink for performance and zero-data-loss
-            // bufferSize: 50000 - Handles burst traffic up to 50k messages
-            // blockWhenFull: true - Prevents log loss in extreme scenarios (may slow down app if buffer fills)
+            // The async wrapper keeps normal log writes off the file I/O path.
+            // When BlockWhenFull is true, callers will wait instead of losing events during bursts.
             var logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
                 .Enrich.WithProperty("Application", configuration.ApplicationName)
@@ -55,12 +53,39 @@ namespace Yumalog.Implementation
         }
 
         /// <summary>
-        /// Creates a corporate logger wrapper around Serilog.
+        /// Creates the application-facing Yumalog wrapper around the configured Serilog instance.
         /// </summary>
-        public static ICorporateLogger CreateCorporateLogger(CorporateLogConfiguration configuration)
+        /// <param name="configuration">Validated runtime settings for file output and buffering.</param>
+        /// <returns>A disposable Yumalog logger instance.</returns>
+        public static SerilogCorporateLogger CreateCorporateLogger(CorporateLogConfiguration configuration)
         {
             var serilogLogger = CreateLogger(configuration);
             return new SerilogCorporateLogger(serilogLogger);
+        }
+
+        /// <summary>
+        /// Ensures the target log directory exists and is writable before the service starts logging.
+        /// </summary>
+        /// <param name="logDirectory">Application-specific directory used by the file sink.</param>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the directory cannot be created or written to.
+        /// </exception>
+        private static void EnsureLogDirectoryReady(string logDirectory)
+        {
+            try
+            {
+                Directory.CreateDirectory(logDirectory);
+
+                var probePath = Path.Combine(logDirectory, WriteProbeFileName);
+                File.WriteAllText(probePath, string.Empty);
+                File.Delete(probePath);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is NotSupportedException)
+            {
+                throw new InvalidOperationException(
+                    $"The configured log directory '{logDirectory}' could not be created or written to.",
+                    ex);
+            }
         }
     }
 }

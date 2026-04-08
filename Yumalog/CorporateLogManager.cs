@@ -6,9 +6,13 @@ namespace Yumalog
     using Yumalog.Implementation;
 
     /// <summary>
-    /// Static manager for legacy applications without Dependency Injection.
-    /// Provides global access to corporate logging.
+    /// Static entry point for legacy applications that do not use Dependency Injection.
     /// </summary>
+    /// <remarks>
+    /// This type exists as a compatibility path for older services. New Windows Service applications
+    /// should prefer the Dependency Injection registration extensions so the host can own logger
+    /// lifetime and shutdown flushing automatically.
+    /// </remarks>
     public static class CorporateLogManager
     {
         private static ICorporateLogger _instance;
@@ -17,8 +21,11 @@ namespace Yumalog
         private static bool _processExitHandlerRegistered = false;
 
         /// <summary>
-        /// Gets the current logger instance. Must call Initialize first.
+        /// Gets the currently initialized logger instance.
         /// </summary>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the manager has not been initialized.
+        /// </exception>
         public static ICorporateLogger Current
         {
             get
@@ -33,10 +40,10 @@ namespace Yumalog
         }
 
         /// <summary>
-        /// Initializes the corporate logging system with required application name.
+        /// Initializes corporate logging using the minimum required settings.
         /// </summary>
         /// <param name="applicationName">The name of the application (required).</param>
-        /// <param name="environment">Environment name. Auto-detected if not provided.</param>
+        /// <param name="environment">Environment name. Auto-detected during validation when omitted.</param>
         public static void Initialize(string applicationName, string environment = null)
         {
             if (string.IsNullOrWhiteSpace(applicationName))
@@ -67,8 +74,9 @@ namespace Yumalog
         }
 
         /// <summary>
-        /// Initializes with custom configuration.
+        /// Initializes corporate logging using a pre-built configuration object.
         /// </summary>
+        /// <param name="configuration">Configuration values used to create the underlying logger.</param>
         public static void Initialize(CorporateLogConfiguration configuration)
         {
             if (configuration == null)
@@ -93,16 +101,19 @@ namespace Yumalog
         }
 
         /// <summary>
-        /// Flushes remaining logs and shuts down the logging system.
-        /// Call this before application exit.
+        /// Flushes queued log events and releases logger resources.
         /// </summary>
+        /// <remarks>
+        /// Legacy applications should call this during an orderly shutdown. A process-exit handler is
+        /// also registered as a best-effort safety net, but explicit shutdown is still the stronger path.
+        /// </remarks>
         public static void Shutdown()
         {
             lock (_lock)
             {
                 if (_isInitialized && _instance != null)
                 {
-                    _instance.FlushAndShutdown();
+                    DisposeCurrentLogger();
                     _instance = null;
                     _isInitialized = false;
                 }
@@ -110,13 +121,12 @@ namespace Yumalog
         }
 
         /// <summary>
-        /// Checks if the logging system has been initialized.
+        /// Gets whether the static manager has been initialized.
         /// </summary>
         public static bool IsInitialized => _isInitialized;
 
         /// <summary>
-        /// Registers a handler for process exit to ensure logs are flushed even in crash scenarios.
-        /// This provides a safety net when Shutdown() is not explicitly called.
+        /// Registers a process-exit handler as a best-effort fallback for legacy applications.
         /// </summary>
         private static void RegisterProcessExitHandler()
         {
@@ -125,26 +135,21 @@ namespace Yumalog
                 return;
             }
 
-            // AppDomain.ProcessExit is called when:
-            // - Application closes normally
-            // - Ctrl+C is pressed (console apps)
-            // - Windows service stops
-            // - Some types of unhandled exceptions
+            // AppDomain.ProcessExit is the last fallback for orderly process teardown paths.
             AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
             _processExitHandlerRegistered = true;
         }
 
         private static void OnProcessExit(object sender, EventArgs e)
         {
-            // Last chance to flush logs before process terminates
-            // This handler has a limited time window (~2-3 seconds on Windows)
+            // This callback has a limited time budget, so exceptions are suppressed deliberately.
             lock (_lock)
             {
                 if (_isInitialized && _instance != null)
                 {
                     try
                     {
-                        _instance.FlushAndShutdown();
+                        DisposeCurrentLogger();
                     }
                     catch
                     {
@@ -152,6 +157,15 @@ namespace Yumalog
                         // Cannot reliably log errors at this point without blocking
                     }
                 }
+            }
+        }
+
+        private static void DisposeCurrentLogger()
+        {
+            // The logger implementation owns async sink flushing through IDisposable.
+            if (_instance is IDisposable disposableLogger)
+            {
+                disposableLogger.Dispose();
             }
         }
     }
