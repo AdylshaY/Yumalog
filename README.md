@@ -1,6 +1,6 @@
 # Yumalog - Centralized Structured Logging
 
-Centralized logging library for .NET Framework and .NET Core applications with Grafana Loki integration via Grafana Alloy agent.
+Centralized structured logging library for .NET Framework and .NET Core applications, designed for collection with Grafana Alloy and visualization through Grafana Loki and Grafana.
 
 ---
 
@@ -8,7 +8,9 @@ Centralized logging library for .NET Framework and .NET Core applications with G
 
 Yumalog is a structured logging library for distributed systems running on Windows Servers. It provides a unified logging interface for both legacy .NET Framework applications and modern .NET Core/.NET 5+ applications.
 
-**Architecture:** Applications write logs to JSON files locally (`C:\ServiceLogs\{ApplicationName}`), then Grafana Alloy agent collects and forwards them to Loki for centralized monitoring via Grafana.
+**Architecture:** Applications write logs to JSON files locally (`C:\ServiceLogs\{ApplicationName}`), then Grafana Alloy can collect and forward them to Loki for centralized monitoring via Grafana.
+
+Yumalog itself is a logging library. It does not bundle Grafana, Loki, or Alloy inside this repository. Instead, it produces structured JSON files that are intended to be collected by an external observability stack.
 
 ---
 
@@ -654,6 +656,112 @@ Each log entry is a single-line JSON object:
 ## Grafana Alloy Configuration
 
 Install Grafana Alloy once per server to collect logs from all applications.
+
+## Observability Stack Setup
+
+Yumalog does not require Docker, Loki, Grafana, or Alloy in order to write logs.
+Those components are only needed when you want to collect, centralize, and visualize the generated JSON files.
+
+There are two common setup models:
+
+1. Docker-based local validation
+Use this when you want a fast demo environment on your development machine.
+Run only the observability stack in Docker: Loki, Grafana, and Alloy.
+Your Windows Service or Worker Service projects continue running normally on the host machine and write logs to the host file system.
+
+2. Direct server installation
+Use this in a real server environment.
+Install Grafana Alloy on each Windows server that produces logs, and install Loki and Grafana either centrally on dedicated servers or through your existing observability platform.
+
+### Recommended Local Demo Setup With Docker
+
+For a local demo or management presentation, the simplest model is:
+
+1. Run your Yumalog-enabled Windows Services on the host machine.
+2. Let them write JSON files under `C:\ServiceLogs`.
+3. Run Loki, Grafana, and Alloy in Docker.
+4. Mount `C:\ServiceLogs` into the Alloy container as a read-only volume.
+5. Configure Alloy to tail the JSON files and push them to Loki.
+6. Use Grafana Explore to query and filter the logs.
+
+This keeps the demo close to the real target architecture while avoiding extra installation effort on your local machine.
+
+### Docker-Based Installation Summary
+
+If you are setting up the observability stack with Docker for the first time, create these components:
+
+1. `docker-compose.yml`
+Starts `loki`, `grafana`, and `alloy` containers.
+
+2. `config.alloy`
+Tells Alloy which JSON files to read and how to extract labels.
+
+3. `loki-config.yaml`
+Configures Loki storage and HTTP endpoints.
+
+4. Grafana datasource provisioning file
+Automatically points Grafana to the Loki container.
+
+Important Docker note for Windows:
+The host path containing Yumalog logs must be shared with Docker Desktop and mounted into the Alloy container, for example:
+
+```yaml
+volumes:
+    - C:/ServiceLogs:/var/service-logs:ro
+```
+
+Once the stack is running, Alloy reads the host-generated Yumalog log files and forwards them to Loki.
+
+### Real Server Installation Summary
+
+In a real production deployment, Docker is optional.
+The more typical Windows Server model is:
+
+1. Deploy Yumalog-enabled services to the server.
+2. Ensure services write to a known directory such as `C:\ServiceLogs`.
+3. Install Grafana Alloy directly on the server as a Windows service.
+4. Configure Alloy to watch the Yumalog log directory.
+5. Send logs to a central Loki instance.
+6. Use Grafana against that Loki instance for queries, dashboards, and troubleshooting.
+
+### What Needs To Be Installed Where
+
+#### On each application server
+
+- Yumalog-enabled Windows Services or Worker Services
+- Grafana Alloy
+- Access to the configured local log directory
+
+#### On the central observability side
+
+- Grafana Loki
+- Grafana
+
+### Direct Installation Guidance
+
+If you do not want to use Docker in production:
+
+1. Install Grafana Alloy on the Windows server.
+2. Configure Alloy with a file source that watches `C:\ServiceLogs\*\*.json`.
+3. Point Alloy to your central Loki endpoint.
+4. Configure Grafana with the Loki datasource.
+
+The exact installation steps can vary by operating system version, service account model, and company standards, so use the official documentation as the base reference for the agent and UI components:
+
+- Grafana Alloy installation and configuration
+- Grafana Loki deployment and storage configuration
+- Grafana datasource and dashboard setup
+
+### Operational Notes
+
+Regardless of whether you use Docker or direct installation:
+
+1. Yumalog is responsible only for producing structured JSON files and diagnostics.
+2. Alloy is responsible for reading the files and forwarding them.
+3. Loki is responsible for storing and indexing the logs.
+4. Grafana is responsible for querying and visualizing them.
+
+This separation is intentional and matches the expected enterprise deployment model.
 
 ### alloy-config.alloy
 
