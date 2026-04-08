@@ -68,14 +68,110 @@ Yumalog is a structured logging library for distributed systems running on Windo
 dotnet add package Yumalog
 ```
 
+### Local Package Build
+
+Use this flow when you want to build Yumalog locally and test it in separate Windows Service projects before publishing it to a private feed.
+
+```powershell
+dotnet build .\Yumalog\Yumalog.csproj -c Release
+dotnet pack .\Yumalog\Yumalog.csproj -c Release -o .\artifacts\packages --no-build
+```
+
+The generated local package will be placed under:
+
+```text
+artifacts\packages\Yumalog.1.0.0.nupkg
+```
+
+Install it into a test project from the local package folder:
+
+```powershell
+dotnet add package Yumalog --source "C:\path\to\Yumalog\artifacts\packages"
+```
+
+If you rebuild the package multiple times while testing, use one of these approaches:
+
+1. Increase the package version in `Yumalog.csproj` before packing again.
+2. Or clear local NuGet caches before re-installing the same version.
+
+```powershell
+dotnet nuget locals all --clear
+```
+
 ### Manual Build
 
 ```bash
 git clone https://github.com/AdylshaY/Yumalog.git
 cd Yumalog
-dotnet pack --configuration Release
-dotnet add package Yumalog --source ./Yumalog/bin/Release
+dotnet build .\Yumalog\Yumalog.csproj -c Release
+dotnet pack .\Yumalog\Yumalog.csproj -c Release -o .\artifacts\packages --no-build
+dotnet add package Yumalog --source ./artifacts/packages
 ```
+
+### Azure DevOps Private Feed
+
+For internal company-wide usage, publish Yumalog to an Azure DevOps Artifacts feed and consume it from Windows Service projects like any other private NuGet package.
+
+#### 1. Publish the package
+
+Build and pack the project locally or in CI:
+
+```powershell
+dotnet build .\Yumalog\Yumalog.csproj -c Release
+dotnet pack .\Yumalog\Yumalog.csproj -c Release -o .\artifacts\packages --no-build
+```
+
+Then publish the generated `.nupkg` to your Azure DevOps feed.
+
+Example with `dotnet nuget push`:
+
+```powershell
+dotnet nuget push .\artifacts\packages\Yumalog.1.0.0.nupkg \
+    --source "YourAzureArtifactsFeed" \
+    --api-key az
+```
+
+Your machine or pipeline must already be authenticated to the Azure DevOps feed.
+
+#### 2. Add the feed to consuming projects
+
+After the private feed is available in NuGet sources, install the package in a service project:
+
+```powershell
+dotnet add package Yumalog --source "YourAzureArtifactsFeed"
+```
+
+Or restore through a `NuGet.config` that already includes the Azure Artifacts feed URL.
+
+#### 3. Update consuming projects to a newer version
+
+When a new Yumalog version is published, consuming projects can update with:
+
+```powershell
+dotnet add package Yumalog --version 1.0.1
+```
+
+or:
+
+```powershell
+dotnet restore
+```
+
+if package version management is already handled centrally.
+
+### Recommended Internal Release Flow
+
+For internal version rollout, use this sequence:
+
+1. Update the `<Version>` value in `Yumalog.csproj`.
+2. Build and run the Yumalog test suite.
+3. Pack the new `.nupkg`.
+4. Publish the package to the Azure DevOps Artifacts feed.
+5. Update one or two pilot Windows Services first.
+6. Validate diagnostics, log output, and Loki/Grafana visibility.
+7. Roll the new package version out to broader internal services.
+
+This keeps the package workflow consistent with the intended enterprise distribution model.
 
 ---
 
