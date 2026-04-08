@@ -2,11 +2,13 @@
 {
     using FluentAssertions;
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Text.Json;
     using System.Threading;
+    using System.Threading.Tasks;
     using Xunit;
     using Yumalog.Configuration;
 
@@ -666,7 +668,98 @@
             logContent.Should().Contain("Critical error before shutdown");
         }
 
+        [Fact]
+        public void Shutdown_WithConcurrentWriters_ShouldFlushAllAcceptedLogs()
+        {
+            const int writerCount = 8;
+            const int messagesPerWriter = 250;
+
+            CorporateLogManager.Initialize(_testAppName);
+            var marker = $"LEGACY_CONCURRENT_FLUSH_{Guid.NewGuid():N}";
+
+            var writerTasks = Enumerable.Range(0, writerCount)
+                .Select(writerIndex => Task.Run(() =>
+                {
+                    for (var messageIndex = 0; messageIndex < messagesPerWriter; messageIndex++)
+                    {
+                        CorporateLogManager.Current.LogInformation($"{marker}_{writerIndex}_{messageIndex}");
+                    }
+                }))
+                .ToArray();
+
+            Task.WaitAll(writerTasks);
+            CorporateLogManager.Shutdown();
+
+            var logContent = GetLatestLogFileContent();
+            var markerCount = CountMessagesContaining(logContent, marker);
+
+            markerCount.Should().Be(writerCount * messagesPerWriter,
+                "legacy shutdown should flush all accepted messages from concurrent writers");
+        }
+
+        [Fact]
+        public void Shutdown_WhenOverlappingActiveWriters_ShouldPersistEveryAcceptedMessage()
+        {
+            const int writerCount = 6;
+            const int maxMessagesPerWriter = 1000;
+
+            CorporateLogManager.Initialize(_testAppName);
+            var marker = $"LEGACY_OVERLAP_{Guid.NewGuid():N}";
+            var startGate = new ManualResetEventSlim(false);
+            var acceptedMessageCount = 0;
+            var unexpectedExceptions = new ConcurrentQueue<Exception>();
+
+            var writerTasks = Enumerable.Range(0, writerCount)
+                .Select(writerIndex => Task.Run(() =>
+                {
+                    startGate.Wait();
+
+                    for (var messageIndex = 0; messageIndex < maxMessagesPerWriter; messageIndex++)
+                    {
+                        try
+                        {
+                            CorporateLogManager.Current.LogInformation($"{marker}_{writerIndex}_{messageIndex}");
+                            Interlocked.Increment(ref acceptedMessageCount);
+                        }
+                        catch (InvalidOperationException ex) when (ex.Message.Contains("has not been initialized"))
+                        {
+                            return;
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            unexpectedExceptions.Enqueue(ex);
+                            return;
+                        }
+                    }
+                }))
+                .ToArray();
+
+            startGate.Set();
+            Thread.Sleep(100);
+            CorporateLogManager.Shutdown();
+            Task.WaitAll(writerTasks);
+
+            unexpectedExceptions.Should().BeEmpty("legacy shutdown overlap should not produce unexpected writer exceptions");
+
+            var logContent = GetLatestLogFileContent();
+            var markerCount = CountMessagesContaining(logContent, marker);
+
+            markerCount.Should().Be(acceptedMessageCount,
+                "every log call that returned successfully before legacy shutdown should be persisted");
+        }
+
         #region Helper Methods
+
+        private static int CountMessagesContaining(string logContent, string marker)
+        {
+            return logContent
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Count(line => line.Contains(marker));
+        }
 
         /// <summary>
         /// Gets the content of the latest log file in the test directory.

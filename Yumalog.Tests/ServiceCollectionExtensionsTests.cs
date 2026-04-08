@@ -1,8 +1,11 @@
 namespace Yumalog.Tests
 {
     using System;
+    using System.Collections.Concurrent;
     using System.IO;
     using System.Linq;
+    using System.Threading;
+    using System.Threading.Tasks;
     using FluentAssertions;
     using Microsoft.Extensions.DependencyInjection;
     using Xunit;
@@ -123,6 +126,111 @@ namespace Yumalog.Tests
 
             act.Should().Throw<InvalidOperationException>()
                 .WithMessage("*could not be created or written to*");
+        }
+
+        [Fact]
+        public void AddCorporateLogging_WithConcurrentWritersAndProviderDispose_ShouldFlushAllAcceptedLogs()
+        {
+            const int writerCount = 8;
+            const int messagesPerWriter = 250;
+
+            var services = new ServiceCollection();
+            services.AddCorporateLogging(new CorporateLogConfiguration
+            {
+                ApplicationName = _testAppName,
+                BaseLogDirectory = _testBaseDirectory,
+                BufferSize = 1000
+            });
+
+            var provider = services.BuildServiceProvider();
+            var logger = provider.GetRequiredService<ICorporateLogger>();
+            var marker = $"CONCURRENT_FLUSH_{Guid.NewGuid():N}";
+
+            var writerTasks = Enumerable.Range(0, writerCount)
+                .Select(writerIndex => Task.Run(() =>
+                {
+                    for (var messageIndex = 0; messageIndex < messagesPerWriter; messageIndex++)
+                    {
+                        logger.LogInformation($"{marker}_{writerIndex}_{messageIndex}");
+                    }
+                }))
+                .ToArray();
+
+            Task.WaitAll(writerTasks);
+            provider.Dispose();
+
+            var logContent = GetLatestLogFileContent();
+            var markerCount = CountMessagesContaining(logContent, marker);
+
+            markerCount.Should().Be(writerCount * messagesPerWriter,
+                "all accepted messages from concurrent writers should be flushed during provider disposal");
+        }
+
+        [Fact]
+        public void AddCorporateLogging_WhenShutdownOverlapsActiveWriters_ShouldPersistEveryAcceptedMessage()
+        {
+            const int writerCount = 6;
+            const int maxMessagesPerWriter = 1000;
+
+            var services = new ServiceCollection();
+            services.AddCorporateLogging(new CorporateLogConfiguration
+            {
+                ApplicationName = _testAppName,
+                BaseLogDirectory = _testBaseDirectory,
+                BufferSize = 1000
+            });
+
+            var provider = services.BuildServiceProvider();
+            var logger = provider.GetRequiredService<ICorporateLogger>();
+            var marker = $"OVERLAP_SHUTDOWN_{Guid.NewGuid():N}";
+            var startGate = new ManualResetEventSlim(false);
+            var acceptedMessageCount = 0;
+            var unexpectedExceptions = new ConcurrentQueue<Exception>();
+
+            var writerTasks = Enumerable.Range(0, writerCount)
+                .Select(writerIndex => Task.Run(() =>
+                {
+                    startGate.Wait();
+
+                    for (var messageIndex = 0; messageIndex < maxMessagesPerWriter; messageIndex++)
+                    {
+                        try
+                        {
+                            logger.LogInformation($"{marker}_{writerIndex}_{messageIndex}");
+                            Interlocked.Increment(ref acceptedMessageCount);
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            unexpectedExceptions.Enqueue(ex);
+                            return;
+                        }
+                    }
+                }))
+                .ToArray();
+
+            startGate.Set();
+            Thread.Sleep(100);
+            provider.Dispose();
+            Task.WaitAll(writerTasks);
+
+            unexpectedExceptions.Should().BeEmpty("shutdown overlap should not produce unexpected writer exceptions");
+
+            var logContent = GetLatestLogFileContent();
+            var markerCount = CountMessagesContaining(logContent, marker);
+
+            markerCount.Should().Be(acceptedMessageCount,
+                "every log call that returned successfully before shutdown should be persisted");
+        }
+
+        private static int CountMessagesContaining(string logContent, string marker)
+        {
+            return logContent
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Count(line => line.Contains(marker));
         }
 
         private string GetLatestLogFileContent()
