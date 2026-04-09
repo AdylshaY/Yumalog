@@ -280,16 +280,7 @@ using Yumalog.Extensions;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
-builder.Logging.AddCorporateLogging(config =>
-{
-    config.ApplicationName = "MyApi";
-    config.Environment = builder.Environment.EnvironmentName;
-    config.BaseLogDirectory = @"C:\ServiceLogs";
-    config.MinimumLogLevel = Microsoft.Extensions.Logging.LogLevel.Information;
-    config.CategoryMinimumLogLevels["Microsoft"] = Microsoft.Extensions.Logging.LogLevel.Warning;
-    config.CategoryMinimumLogLevels["Microsoft.Hosting"] = Microsoft.Extensions.Logging.LogLevel.Information;
-    config.BlockWhenFull = false;
-});
+builder.Logging.AddCorporateLogging(builder.Configuration);
 
 builder.Services.AddControllers();
 
@@ -301,6 +292,25 @@ app.Run();
 This registration keeps `ILogger<T>` intact for controllers, services, middleware, and framework logs while routing accepted events through Yumalog's file-based pipeline.
 
 Category-specific rules are matched by exact category name or prefix. More specific rules win. For example, a rule named `Microsoft` applies to `Microsoft.*`, while `Microsoft.Hosting` overrides that subset with a different minimum level.
+
+**appsettings.json**
+
+```json
+{
+    "Yumalog": {
+        "ApplicationName": "MyApi",
+        "BaseLogDirectory": "C:\\ServiceLogs",
+        "MinimumLogLevel": "Information",
+        "BlockWhenFull": false,
+        "CategoryMinimumLogLevels": {
+            "Microsoft": "Warning",
+            "Microsoft.Hosting": "Information"
+        }
+    }
+}
+```
+
+You can also bind a different section name, for example `builder.Logging.AddCorporateLogging(builder.Configuration, "Observability:Yumalog")`.
 
 **OrderProcessorWorker.cs**
 

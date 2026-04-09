@@ -8,6 +8,7 @@ namespace Yumalog.Tests
     using System.Threading;
     using System.Threading.Tasks;
     using FluentAssertions;
+    using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Logging;
     using Xunit;
@@ -437,11 +438,103 @@ namespace Yumalog.Tests
             logContent.Should().Contain(writtenMarker);
         }
 
+        [Fact]
+        public void AddCorporateLogging_WithConfigurationSection_ShouldBindSettingsForDirectUsage()
+        {
+            var configuration = CreateConfiguration(new Dictionary<string, string>
+            {
+                ["Yumalog:ApplicationName"] = _testAppName,
+                ["Yumalog:BaseLogDirectory"] = _testBaseDirectory,
+                ["Yumalog:BufferSize"] = "1000",
+                ["Yumalog:MinimumLogLevel"] = "Warning"
+            });
+
+            var services = new ServiceCollection();
+            services.AddCorporateLogging(configuration.GetSection("Yumalog"));
+
+            using var provider = services.BuildServiceProvider();
+            var logger = provider.GetRequiredService<ICorporateLogger>();
+            var suppressedMarker = $"CONFIG_DIRECT_INFO_{Guid.NewGuid():N}";
+            var writtenMarker = $"CONFIG_DIRECT_ERROR_{Guid.NewGuid():N}";
+
+            logger.LogInformation(suppressedMarker);
+            logger.LogError(writtenMarker);
+            provider.Dispose();
+
+            var logContent = GetLatestLogFileContent();
+            logContent.Should().NotContain(suppressedMarker);
+            logContent.Should().Contain(writtenMarker);
+        }
+
+        [Fact]
+        public void AddCorporateLogging_WithConfigurationRootOnLoggingBuilder_ShouldBindDefaultYumalogSection()
+        {
+            var configuration = CreateConfiguration(new Dictionary<string, string>
+            {
+                ["Yumalog:ApplicationName"] = _testAppName,
+                ["Yumalog:BaseLogDirectory"] = _testBaseDirectory,
+                ["Yumalog:BufferSize"] = "1000",
+                ["Yumalog:MinimumLogLevel"] = "Warning",
+                ["Yumalog:CategoryMinimumLogLevels:Microsoft"] = "Error",
+                ["Yumalog:CategoryMinimumLogLevels:Yumalog.Tests.ServiceCollectionExtensionsTests"] = "Information"
+            });
+
+            var services = new ServiceCollection();
+            services.AddLogging(builder => builder.AddCorporateLogging(configuration));
+
+            using var provider = services.BuildServiceProvider();
+            var typedLogger = provider.GetRequiredService<ILogger<ServiceCollectionExtensionsTests>>();
+            var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+            var microsoftLogger = loggerFactory.CreateLogger("Microsoft.AspNetCore.Hosting.Diagnostics");
+            var allowedMarker = $"CONFIG_ALLOWED_{Guid.NewGuid():N}";
+            var blockedMarker = $"CONFIG_BLOCKED_{Guid.NewGuid():N}";
+
+            typedLogger.LogInformation("{Marker}", allowedMarker);
+            microsoftLogger.LogWarning("{Marker}", blockedMarker);
+            provider.Dispose();
+
+            var logContent = GetLatestLogFileContent();
+            logContent.Should().Contain(allowedMarker);
+            logContent.Should().NotContain(blockedMarker);
+        }
+
+        [Fact]
+        public void AddCorporateLogging_WithNamedConfigurationSection_ShouldBindAlternateSection()
+        {
+            var configuration = CreateConfiguration(new Dictionary<string, string>
+            {
+                ["Observability:Yumalog:ApplicationName"] = _testAppName,
+                ["Observability:Yumalog:BaseLogDirectory"] = _testBaseDirectory,
+                ["Observability:Yumalog:BufferSize"] = "1000",
+                ["Observability:Yumalog:MinimumLogLevel"] = "Information"
+            });
+
+            var services = new ServiceCollection();
+            services.AddLogging(builder => builder.AddCorporateLogging(configuration, "Observability:Yumalog"));
+
+            using var provider = services.BuildServiceProvider();
+            var logger = provider.GetRequiredService<ILogger<ServiceCollectionExtensionsTests>>();
+            var marker = $"CONFIG_NAMED_SECTION_{Guid.NewGuid():N}";
+
+            logger.LogInformation("{Marker}", marker);
+            provider.Dispose();
+
+            var logContent = GetLatestLogFileContent();
+            logContent.Should().Contain(marker);
+        }
+
         private static int CountMessagesContaining(string logContent, string marker)
         {
             return logContent
                 .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                 .Count(line => line.Contains(marker));
+        }
+
+        private static IConfiguration CreateConfiguration(IDictionary<string, string> values)
+        {
+            return new ConfigurationBuilder()
+                .AddInMemoryCollection(values)
+                .Build();
         }
 
         private string GetLatestLogFileContent()

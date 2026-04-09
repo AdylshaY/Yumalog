@@ -1,6 +1,7 @@
 namespace Yumalog.Extensions
 {
     using System;
+    using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Yumalog.Abstractions;
     using Yumalog.Configuration;
@@ -94,6 +95,56 @@ namespace Yumalog.Extensions
             configuration.Validate();
 
             return AddCorporateLogging(services, configuration);
+        }
+
+        /// <summary>
+        /// Registers Yumalog using settings bound from the default <c>Yumalog</c> configuration section.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="configuration">The root configuration object.</param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection AddCorporateLogging(
+            this IServiceCollection services,
+            IConfiguration configuration)
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            return AddCorporateLogging(services, configuration, CorporateLogConfigurationBinder.DefaultSectionName);
+        }
+
+        /// <summary>
+        /// Registers Yumalog using settings bound from a named configuration section.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="configuration">The root configuration object.</param>
+        /// <param name="sectionName">The configuration section name.</param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection AddCorporateLogging(
+            this IServiceCollection services,
+            IConfiguration configuration,
+            string sectionName)
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            return AddCorporateLogging(services, CorporateLogConfigurationBinder.BindSection(configuration, sectionName));
+        }
+
+        /// <summary>
+        /// Registers Yumalog using a preselected configuration section.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="section">The configuration section containing Yumalog settings.</param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection AddCorporateLogging(
+            this IServiceCollection services,
+            IConfigurationSection section)
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            return AddCorporateLogging(services, CorporateLogConfigurationBinder.Bind(section));
         }
     }
 }

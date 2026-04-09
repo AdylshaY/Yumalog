@@ -1,6 +1,7 @@
 namespace Yumalog.Extensions
 {
     using System;
+    using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Logging;
     using Yumalog.Configuration;
@@ -88,6 +89,56 @@ namespace Yumalog.Extensions
             configuration.Validate();
 
             return AddCorporateLogging(builder, configuration);
+        }
+
+        /// <summary>
+        /// Registers Yumalog as a Microsoft logging provider using the default <c>Yumalog</c> configuration section.
+        /// </summary>
+        /// <param name="builder">The logging builder.</param>
+        /// <param name="configuration">The root configuration object.</param>
+        /// <returns>The logging builder for chaining.</returns>
+        public static ILoggingBuilder AddCorporateLogging(
+            this ILoggingBuilder builder,
+            IConfiguration configuration)
+        {
+            if (builder == null)
+                throw new ArgumentNullException(nameof(builder));
+
+            return AddCorporateLogging(builder, configuration, CorporateLogConfigurationBinder.DefaultSectionName);
+        }
+
+        /// <summary>
+        /// Registers Yumalog as a Microsoft logging provider using a named configuration section.
+        /// </summary>
+        /// <param name="builder">The logging builder.</param>
+        /// <param name="configuration">The root configuration object.</param>
+        /// <param name="sectionName">The configuration section name.</param>
+        /// <returns>The logging builder for chaining.</returns>
+        public static ILoggingBuilder AddCorporateLogging(
+            this ILoggingBuilder builder,
+            IConfiguration configuration,
+            string sectionName)
+        {
+            if (builder == null)
+                throw new ArgumentNullException(nameof(builder));
+
+            return AddCorporateLogging(builder, CorporateLogConfigurationBinder.BindSection(configuration, sectionName));
+        }
+
+        /// <summary>
+        /// Registers Yumalog as a Microsoft logging provider using a preselected configuration section.
+        /// </summary>
+        /// <param name="builder">The logging builder.</param>
+        /// <param name="section">The configuration section containing Yumalog settings.</param>
+        /// <returns>The logging builder for chaining.</returns>
+        public static ILoggingBuilder AddCorporateLogging(
+            this ILoggingBuilder builder,
+            IConfigurationSection section)
+        {
+            if (builder == null)
+                throw new ArgumentNullException(nameof(builder));
+
+            return AddCorporateLogging(builder, CorporateLogConfigurationBinder.Bind(section));
         }
     }
 }
