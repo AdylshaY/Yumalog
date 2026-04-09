@@ -286,6 +286,8 @@ builder.Logging.AddCorporateLogging(config =>
     config.Environment = builder.Environment.EnvironmentName;
     config.BaseLogDirectory = @"C:\ServiceLogs";
     config.MinimumLogLevel = Microsoft.Extensions.Logging.LogLevel.Information;
+    config.CategoryMinimumLogLevels["Microsoft"] = Microsoft.Extensions.Logging.LogLevel.Warning;
+    config.CategoryMinimumLogLevels["Microsoft.Hosting"] = Microsoft.Extensions.Logging.LogLevel.Information;
     config.BlockWhenFull = false;
 });
 
@@ -297,6 +299,8 @@ app.Run();
 ```
 
 This registration keeps `ILogger<T>` intact for controllers, services, middleware, and framework logs while routing accepted events through Yumalog's file-based pipeline.
+
+Category-specific rules are matched by exact category name or prefix. More specific rules win. For example, a rule named `Microsoft` applies to `Microsoft.*`, while `Microsoft.Hosting` overrides that subset with a different minimum level.
 
 **OrderProcessorWorker.cs**
 

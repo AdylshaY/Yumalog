@@ -36,7 +36,7 @@ namespace Yumalog.Implementation
         /// <inheritdoc />
         public bool IsEnabled(LogLevel logLevel)
         {
-            return logLevel != LogLevel.None && logLevel >= _runtime.MinimumLogLevel;
+            return _runtime.IsEnabled(_categoryName, logLevel);
         }
 
         /// <inheritdoc />

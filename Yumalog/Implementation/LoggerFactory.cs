@@ -37,7 +37,7 @@ namespace Yumalog.Implementation
             // Rolling is fixed to daily; validation rejects unsupported RollingIntervalDays values.
             // When BlockWhenFull is true, callers will wait instead of losing events during bursts.
             var logger = new LoggerConfiguration()
-                .MinimumLevel.Is(MapLogLevel(configuration.MinimumLogLevel))
+                .MinimumLevel.Is(MapLogLevel(GetSinkMinimumLogLevel(configuration)))
                 .Enrich.WithProperty("Application", configuration.ApplicationName)
                 .Enrich.WithProperty("Environment", configuration.Environment)
                 .Enrich.WithProperty("MachineName", Environment.MachineName)
@@ -70,6 +70,7 @@ namespace Yumalog.Implementation
                 configuration.ApplicationName,
                 configuration.LogDirectory,
                 configuration.MinimumLogLevel,
+                configuration.CategoryMinimumLogLevels,
                 configuration.DiagnosticListener);
         }
 
@@ -142,6 +143,21 @@ namespace Yumalog.Implementation
                     throw new ArgumentOutOfRangeException(nameof(logLevel), logLevel,
                         "Unsupported Microsoft.Extensions.Logging log level.");
             }
+        }
+
+        private static LogLevel GetSinkMinimumLogLevel(CorporateLogConfiguration configuration)
+        {
+            var minimumLogLevel = configuration.MinimumLogLevel;
+
+            foreach (var rule in configuration.CategoryMinimumLogLevels)
+            {
+                if (rule.Value < minimumLogLevel)
+                {
+                    minimumLogLevel = rule.Value;
+                }
+            }
+
+            return minimumLogLevel;
         }
     }
 }

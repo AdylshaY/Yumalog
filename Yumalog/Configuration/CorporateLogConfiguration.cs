@@ -1,6 +1,7 @@
 namespace Yumalog.Configuration
 {
     using System;
+    using System.Collections.Generic;
     using Microsoft.Extensions.Logging;
     using Yumalog.Diagnostics;
 
@@ -109,6 +110,15 @@ namespace Yumalog.Configuration
         public LogLevel MinimumLogLevel { get; set; } = LogLevel.Debug;
 
         /// <summary>
+        /// Optional category-specific minimum levels used by the ASP.NET Core <see cref="ILogger"/> provider.
+        /// Keys are matched by exact category name or category prefix. For example, a rule named
+        /// <c>Microsoft</c> applies to <c>Microsoft</c> and <c>Microsoft.AspNetCore.Hosting</c>.
+        /// More specific matches win over broader prefix matches.
+        /// </summary>
+        public IDictionary<string, LogLevel> CategoryMinimumLogLevels { get; } =
+            new Dictionary<string, LogLevel>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
         /// Interval used to sample async buffer health metrics when diagnostics are enabled.
         /// </summary>
         public TimeSpan AsyncBufferMonitorInterval
@@ -178,6 +188,22 @@ namespace Yumalog.Configuration
             {
                 throw new ArgumentOutOfRangeException(nameof(MinimumLogLevel),
                     "MinimumLogLevel must allow at least one log level. LogLevel.None is not supported.");
+            }
+
+            foreach (var rule in CategoryMinimumLogLevels)
+            {
+                if (string.IsNullOrWhiteSpace(rule.Key))
+                {
+                    throw new ArgumentException(
+                        "CategoryMinimumLogLevels cannot contain an empty category name.",
+                        nameof(CategoryMinimumLogLevels));
+                }
+
+                if (rule.Value == LogLevel.None)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(CategoryMinimumLogLevels),
+                        "CategoryMinimumLogLevels cannot use LogLevel.None. Remove the rule instead.");
+                }
             }
 
             // Validate the application name before it is used as part of a directory path.

@@ -3,6 +3,7 @@ namespace Yumalog.Implementation
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using Microsoft.Extensions.Logging;
     using Serilog.Events;
     using Serilog.Parsing;
     using Yumalog.Abstractions;
@@ -62,6 +63,12 @@ namespace Yumalog.Implementation
         public void LogInformationObject(string message, object data)
         {
             ThrowIfDisposed();
+
+            if (!_runtime.IsEnabled(null, LogLevel.Information))
+            {
+                return;
+            }
+
             _runtime.BaseLogger.Information("{Message} {@Data}", message, data);
         }
 
@@ -76,6 +83,11 @@ namespace Yumalog.Implementation
         private void WriteLog(LogEventLevel level, string message, Exception exception, IDictionary<string, object> properties)
         {
             ThrowIfDisposed();
+
+            if (!_runtime.IsEnabled(null, MapLogLevel(level)))
+            {
+                return;
+            }
 
             var logger = _runtime.BaseLogger;
 
@@ -104,6 +116,27 @@ namespace Yumalog.Implementation
         private void ThrowIfDisposed()
         {
             _runtime.ThrowIfDisposed();
+        }
+
+        private static LogLevel MapLogLevel(LogEventLevel logEventLevel)
+        {
+            switch (logEventLevel)
+            {
+                case LogEventLevel.Verbose:
+                case LogEventLevel.Debug:
+                    return LogLevel.Debug;
+                case LogEventLevel.Information:
+                    return LogLevel.Information;
+                case LogEventLevel.Warning:
+                    return LogLevel.Warning;
+                case LogEventLevel.Error:
+                    return LogLevel.Error;
+                case LogEventLevel.Fatal:
+                    return LogLevel.Critical;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(logEventLevel), logEventLevel,
+                        "Unsupported Serilog log level.");
+            }
         }
     }
 }

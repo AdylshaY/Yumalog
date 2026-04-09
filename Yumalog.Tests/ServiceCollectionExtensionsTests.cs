@@ -375,6 +375,68 @@ namespace Yumalog.Tests
             logContent.Should().Contain("serialize");
         }
 
+        [Fact]
+        public void AddCorporateLogging_WithLoggingBuilder_ShouldHonorCategoryMinimumLogLevels()
+        {
+            var services = new ServiceCollection();
+            services.AddLogging(builder => builder.AddCorporateLogging(config =>
+            {
+                config.ApplicationName = _testAppName;
+                config.BaseLogDirectory = _testBaseDirectory;
+                config.BufferSize = 1000;
+                config.MinimumLogLevel = LogLevel.Warning;
+                config.CategoryMinimumLogLevels[typeof(ServiceCollectionExtensionsTests).FullName] = LogLevel.Information;
+                config.CategoryMinimumLogLevels["Microsoft"] = LogLevel.Error;
+            }));
+
+            using var provider = services.BuildServiceProvider();
+            var typedLogger = provider.GetRequiredService<ILogger<ServiceCollectionExtensionsTests>>();
+            var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+            var microsoftLogger = loggerFactory.CreateLogger("Microsoft.AspNetCore.Hosting.Diagnostics");
+            var allowedMarker = $"MEL_CATEGORY_ALLOWED_{Guid.NewGuid():N}";
+            var blockedMicrosoftMarker = $"MEL_CATEGORY_BLOCKED_{Guid.NewGuid():N}";
+            var allowedMicrosoftErrorMarker = $"MEL_CATEGORY_ERROR_{Guid.NewGuid():N}";
+
+            typedLogger.LogInformation("{Marker} typed info should be allowed", allowedMarker);
+            microsoftLogger.LogWarning("{Marker} warning should be blocked", blockedMicrosoftMarker);
+            microsoftLogger.LogError("{Marker} error should be allowed", allowedMicrosoftErrorMarker);
+
+            provider.Dispose();
+
+            var logContent = GetLatestLogFileContent();
+            logContent.Should().Contain(allowedMarker);
+            logContent.Should().Contain(allowedMicrosoftErrorMarker);
+            logContent.Should().NotContain(blockedMicrosoftMarker);
+        }
+
+        [Fact]
+        public void AddCorporateLogging_WithCategoryOverrides_ShouldKeepDirectCorporateLoggerOnGlobalMinimum()
+        {
+            var services = new ServiceCollection();
+            services.AddCorporateLogging(config =>
+            {
+                config.ApplicationName = _testAppName;
+                config.BaseLogDirectory = _testBaseDirectory;
+                config.BufferSize = 1000;
+                config.MinimumLogLevel = LogLevel.Warning;
+                config.CategoryMinimumLogLevels[typeof(ServiceCollectionExtensionsTests).FullName] = LogLevel.Debug;
+            });
+
+            using var provider = services.BuildServiceProvider();
+            var corporateLogger = provider.GetRequiredService<ICorporateLogger>();
+            var suppressedMarker = $"CORPORATE_SUPPRESSED_{Guid.NewGuid():N}";
+            var writtenMarker = $"CORPORATE_WRITTEN_{Guid.NewGuid():N}";
+
+            corporateLogger.LogInformation(suppressedMarker);
+            corporateLogger.LogError(writtenMarker);
+
+            provider.Dispose();
+
+            var logContent = GetLatestLogFileContent();
+            logContent.Should().NotContain(suppressedMarker);
+            logContent.Should().Contain(writtenMarker);
+        }
+
         private static int CountMessagesContaining(string logContent, string marker)
         {
             return logContent
