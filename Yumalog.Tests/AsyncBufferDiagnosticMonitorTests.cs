@@ -14,15 +14,15 @@ namespace Yumalog.Tests
         [Fact]
         public void StartMonitoring_ShouldEmitMonitoringStartedDiagnostic()
         {
-            var diagnostics = new List<CorporateLogDiagnosticEvent>();
+            var diagnostics = new List<YumalogDiagnosticEvent>();
             var monitor = CreateMonitor(diagnostics.Add, TimeSpan.FromMinutes(1), 80);
             var inspector = new FakeAsyncLogEventSinkInspector { BufferSize = 1000, Count = 25, DroppedMessagesCount = 0 };
 
             monitor.StartMonitoring(inspector);
 
-            diagnostics.Select(d => d.EventType).Should().Contain(CorporateLogDiagnosticEventType.AsyncBufferMonitoringStarted);
+            diagnostics.Select(d => d.EventType).Should().Contain(YumalogDiagnosticEventType.AsyncBufferMonitoringStarted);
             diagnostics.Should().ContainSingle(d =>
-                d.EventType == CorporateLogDiagnosticEventType.AsyncBufferMonitoringStarted &&
+                d.EventType == YumalogDiagnosticEventType.AsyncBufferMonitoringStarted &&
                 d.BufferSize == 1000 &&
                 d.BufferCount == 25);
 
@@ -32,7 +32,7 @@ namespace Yumalog.Tests
         [Fact]
         public void CheckHealth_WhenUsageCrossesThreshold_ShouldEmitHighUsageDiagnosticOncePerBreach()
         {
-            var diagnostics = new List<CorporateLogDiagnosticEvent>();
+            var diagnostics = new List<YumalogDiagnosticEvent>();
             var monitor = CreateMonitor(diagnostics.Add, TimeSpan.FromMinutes(1), 80);
             var inspector = new FakeAsyncLogEventSinkInspector { BufferSize = 100, Count = 79, DroppedMessagesCount = 0 };
             monitor.StartMonitoring(inspector);
@@ -47,14 +47,14 @@ namespace Yumalog.Tests
             inspector.Count = 85;
             monitor.CheckHealth();
 
-            diagnostics.Count(d => d.EventType == CorporateLogDiagnosticEventType.AsyncBufferHighUsage).Should().Be(2);
+            diagnostics.Count(d => d.EventType == YumalogDiagnosticEventType.AsyncBufferHighUsage).Should().Be(2);
             monitor.Dispose();
         }
 
         [Fact]
         public void CheckHealth_WhenDroppedMessagesIncrease_ShouldEmitDroppedMessagesDiagnostic()
         {
-            var diagnostics = new List<CorporateLogDiagnosticEvent>();
+            var diagnostics = new List<YumalogDiagnosticEvent>();
             var monitor = CreateMonitor(diagnostics.Add, TimeSpan.FromMinutes(1), 80);
             var inspector = new FakeAsyncLogEventSinkInspector { BufferSize = 100, Count = 100, DroppedMessagesCount = 0 };
             monitor.StartMonitoring(inspector);
@@ -63,7 +63,7 @@ namespace Yumalog.Tests
             monitor.CheckHealth();
 
             diagnostics.Should().ContainSingle(d =>
-                d.EventType == CorporateLogDiagnosticEventType.AsyncBufferDroppedMessages &&
+                d.EventType == YumalogDiagnosticEventType.AsyncBufferDroppedMessages &&
                 d.DroppedMessagesCount == 5);
 
             monitor.Dispose();
@@ -72,18 +72,18 @@ namespace Yumalog.Tests
         [Fact]
         public void StopMonitoring_ShouldEmitMonitoringStoppedDiagnostic()
         {
-            var diagnostics = new List<CorporateLogDiagnosticEvent>();
+            var diagnostics = new List<YumalogDiagnosticEvent>();
             var monitor = CreateMonitor(diagnostics.Add, TimeSpan.FromMinutes(1), 80);
             var inspector = new FakeAsyncLogEventSinkInspector { BufferSize = 1000, Count = 0, DroppedMessagesCount = 0 };
             monitor.StartMonitoring(inspector);
 
             monitor.StopMonitoring(inspector);
 
-            diagnostics.Select(d => d.EventType).Should().Contain(CorporateLogDiagnosticEventType.AsyncBufferMonitoringStopped);
+            diagnostics.Select(d => d.EventType).Should().Contain(YumalogDiagnosticEventType.AsyncBufferMonitoringStopped);
         }
 
         private static AsyncBufferDiagnosticMonitor CreateMonitor(
-            Action<CorporateLogDiagnosticEvent> listener,
+            Action<YumalogDiagnosticEvent> listener,
             TimeSpan interval,
             int threshold)
         {

@@ -5,9 +5,9 @@ namespace Yumalog.Extensions
     using Yumalog.Configuration;
 
     /// <summary>
-    /// Creates validated <see cref="CorporateLogConfiguration"/> instances from configuration sources.
+    /// Creates validated <see cref="YumalogConfiguration"/> instances from configuration sources.
     /// </summary>
-    internal static class CorporateLogConfigurationBinder
+    internal static class YumalogConfigurationBinder
     {
         /// <summary>
         /// Default section name used for Yumalog settings in configuration files.
@@ -19,12 +19,12 @@ namespace Yumalog.Extensions
         /// </summary>
         /// <param name="section">The configuration section containing Yumalog settings.</param>
         /// <returns>A validated Yumalog configuration instance.</returns>
-        internal static CorporateLogConfiguration Bind(IConfiguration section)
+        internal static YumalogConfiguration Bind(IConfiguration section)
         {
             if (section == null)
                 throw new ArgumentNullException(nameof(section));
 
-            var configuration = new CorporateLogConfiguration();
+            var configuration = new YumalogConfiguration();
             section.Bind(configuration);
             configuration.Validate();
 
@@ -37,7 +37,7 @@ namespace Yumalog.Extensions
         /// <param name="configuration">The root configuration object.</param>
         /// <param name="sectionName">The section name to bind.</param>
         /// <returns>A validated Yumalog configuration instance.</returns>
-        internal static CorporateLogConfiguration BindSection(IConfiguration configuration, string sectionName)
+        internal static YumalogConfiguration BindSection(IConfiguration configuration, string sectionName)
         {
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));

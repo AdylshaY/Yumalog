@@ -6,34 +6,34 @@
     using Yumalog.Configuration;
 
     /// <summary>
-    /// Tests for CorporateLogManager static manager initialization and lifecycle.
+    /// Tests for YumalogManager static manager initialization and lifecycle.
     /// </summary>
-    [Collection("CorporateLogManager Sequential Tests")]
-    public class CorporateLogManagerTests : IDisposable
+    [Collection("YumalogManager Sequential Tests")]
+    public class YumalogManagerTests : IDisposable
     {
         public void Dispose()
         {
-            if (CorporateLogManager.IsInitialized)
+            if (YumalogManager.IsInitialized)
             {
-                CorporateLogManager.Shutdown();
+                YumalogManager.Shutdown();
             }
         }
 
         /// <summary>
-        /// Verifies that initializing the CorporateLogManager with a valid application name completes successfully and sets the expected state.
+        /// Verifies that initializing the YumalogManager with a valid application name completes successfully and sets the expected state.
         /// </summary>
         /// <remarks>This test ensures that after calling Initialize with a valid application name, the
-        /// CorporateLogManager is marked as initialized and the Current instance is not null.</remarks>
+        /// YumalogManager is marked as initialized and the Current instance is not null.</remarks>
         [Fact]
         public void Initialize_WithValidApplicationName_ShouldSucceed()
         {
             // Arrange
             string applicationName = "TestApp";
             // Act
-            CorporateLogManager.Initialize(applicationName);
+            YumalogManager.Initialize(applicationName);
             // Assert
-            CorporateLogManager.IsInitialized.Should().BeTrue();
-            CorporateLogManager.Current.Should().NotBeNull();
+            YumalogManager.IsInitialized.Should().BeTrue();
+            YumalogManager.Current.Should().NotBeNull();
         }
 
         [Fact]
@@ -42,7 +42,7 @@
             // Arrange
             string applicationName = null;
             // Act
-            Action act = () => CorporateLogManager.Initialize(applicationName);
+            Action act = () => YumalogManager.Initialize(applicationName);
             // Assert
             act.Should().Throw<ArgumentException>()
                 .WithParameterName("applicationName");
@@ -55,7 +55,7 @@
         public void Initialize_WithInvalidApplicationName_ShouldThrowArgumentException(string appName)
         {
             // Act & Assert
-            Action act = () => CorporateLogManager.Initialize(appName);
+            Action act = () => YumalogManager.Initialize(appName);
 
             act.Should().Throw<ArgumentException>()
                 .WithParameterName("applicationName");
@@ -65,10 +65,10 @@
         public void Initialize_TwiceWithoutShutdown_ShouldThrowInvalidOperationException()
         {
             // Arrange
-            CorporateLogManager.Initialize("TestApp");
+            YumalogManager.Initialize("TestApp");
 
             // Act & Assert
-            Action act = () => CorporateLogManager.Initialize("TestApp2");
+            Action act = () => YumalogManager.Initialize("TestApp2");
 
             act.Should().Throw<InvalidOperationException>()
                 .WithMessage("*already been initialized*");
@@ -78,7 +78,7 @@
         public void Current_BeforeInitialize_ShouldThrowInvalidOperationException()
         {
             // Act & Assert
-            Action act = () => { var logger = CorporateLogManager.Current; };
+            Action act = () => { var logger = YumalogManager.Current; };
 
             act.Should().Throw<InvalidOperationException>()
                 .WithMessage("*has not been initialized*");
@@ -88,22 +88,22 @@
         public void Shutdown_AfterInitialize_ShouldAllowReinitialization()
         {
             // Arrange
-            CorporateLogManager.Initialize("TestApp1");
-            CorporateLogManager.Shutdown();
+            YumalogManager.Initialize("TestApp1");
+            YumalogManager.Shutdown();
 
             // Act - İkinci kez initialize edilebilmeli
-            Action act = () => CorporateLogManager.Initialize("TestApp2");
+            Action act = () => YumalogManager.Initialize("TestApp2");
 
             // Assert
             act.Should().NotThrow();
-            CorporateLogManager.IsInitialized.Should().BeTrue();
+            YumalogManager.IsInitialized.Should().BeTrue();
         }
 
         [Fact]
         public void Shutdown_WithoutInitialize_ShouldNotThrowException()
         {
             // Act & Assert
-            Action act = () => CorporateLogManager.Shutdown();
+            Action act = () => YumalogManager.Shutdown();
 
             act.Should().NotThrow();
         }
@@ -112,30 +112,30 @@
         public void IsInitialized_BeforeInitialize_ShouldBeFalse()
         {
             // Assert
-            CorporateLogManager.IsInitialized.Should().BeFalse();
+            YumalogManager.IsInitialized.Should().BeFalse();
         }
 
         [Fact]
         public void IsInitialized_AfterInitialize_ShouldBeTrue()
         {
             // Act
-            CorporateLogManager.Initialize("TestApp");
+            YumalogManager.Initialize("TestApp");
 
             // Assert
-            CorporateLogManager.IsInitialized.Should().BeTrue();
+            YumalogManager.IsInitialized.Should().BeTrue();
         }
 
         [Fact]
         public void IsInitialized_AfterShutdown_ShouldBeFalse()
         {
             // Arrange
-            CorporateLogManager.Initialize("TestApp");
+            YumalogManager.Initialize("TestApp");
 
             // Act
-            CorporateLogManager.Shutdown();
+            YumalogManager.Shutdown();
 
             // Assert
-            CorporateLogManager.IsInitialized.Should().BeFalse();
+            YumalogManager.IsInitialized.Should().BeFalse();
         }
 
 
@@ -143,7 +143,7 @@
         public void Initialize_WithCustomConfiguration_ShouldSucceed()
         {
             // Arrange
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "CustomApp",
                 Environment = "Testing",
@@ -152,21 +152,21 @@
             };
 
             // Act
-            CorporateLogManager.Initialize(config);
+            YumalogManager.Initialize(config);
 
             // Assert
-            CorporateLogManager.IsInitialized.Should().BeTrue();
-            CorporateLogManager.Current.Should().NotBeNull();
+            YumalogManager.IsInitialized.Should().BeTrue();
+            YumalogManager.Current.Should().NotBeNull();
         }
 
         [Fact]
         public void Initialize_WithNullConfiguration_ShouldThrowArgumentNullException()
         {
             // Arrange
-            CorporateLogConfiguration config = null;
+            YumalogConfiguration config = null;
 
             // Act & Assert
-            Action act = () => CorporateLogManager.Initialize(config);
+            Action act = () => YumalogManager.Initialize(config);
 
             act.Should().Throw<ArgumentNullException>()
                 .WithParameterName("configuration");

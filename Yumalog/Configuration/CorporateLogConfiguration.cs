@@ -8,7 +8,7 @@ namespace Yumalog.Configuration
     /// <summary>
     /// Configuration settings that control Yumalog file output and buffering behavior.
     /// </summary>
-    public class CorporateLogConfiguration
+    public class YumalogConfiguration
     {
         private const string DefaultBaseLogDirectory = @"C:\ServiceLogs";
         private TimeSpan _asyncBufferMonitorInterval = TimeSpan.FromSeconds(1);
@@ -156,7 +156,7 @@ namespace Yumalog.Configuration
         /// The callback should be lightweight and non-throwing. When diagnostics are enabled, Yumalog also
         /// emits async buffer monitoring events for queue pressure and dropped-message visibility.
         /// </remarks>
-        public Action<CorporateLogDiagnosticEvent> DiagnosticListener { get; set; }
+        public Action<YumalogDiagnosticEvent> DiagnosticListener { get; set; }
 
         /// <summary>
         /// Validates required configuration values and resolves missing defaults.

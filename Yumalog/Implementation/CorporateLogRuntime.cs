@@ -11,25 +11,25 @@ namespace Yumalog.Implementation
     /// <summary>
     /// Owns the shared Serilog pipeline and the lifecycle diagnostics around logger shutdown.
     /// </summary>
-    internal sealed class CorporateLogRuntime : IDisposable
+    internal sealed class YumalogRuntime : IDisposable
     {
         private readonly Logger _logger;
         private readonly string _applicationName;
         private readonly string _logDirectory;
-        private readonly Action<CorporateLogDiagnosticEvent> _diagnosticListener;
+        private readonly Action<YumalogDiagnosticEvent> _diagnosticListener;
         private readonly IReadOnlyList<CategoryLevelRule> _categoryMinimumLogLevels;
         private bool _disposed;
 
         /// <summary>
         /// Initializes a new runtime instance around the configured Serilog logger.
         /// </summary>
-        public CorporateLogRuntime(
+        public YumalogRuntime(
             Logger logger,
             string applicationName,
             string logDirectory,
             LogLevel minimumLogLevel,
             IDictionary<string, LogLevel> categoryMinimumLogLevels,
-            Action<CorporateLogDiagnosticEvent> diagnosticListener = null)
+            Action<YumalogDiagnosticEvent> diagnosticListener = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _applicationName = applicationName ?? throw new ArgumentNullException(nameof(applicationName));
@@ -96,7 +96,7 @@ namespace Yumalog.Implementation
         {
             if (_disposed)
             {
-                throw new ObjectDisposedException(nameof(CorporateLogRuntime));
+                throw new ObjectDisposedException(nameof(YumalogRuntime));
             }
         }
 
@@ -110,7 +110,7 @@ namespace Yumalog.Implementation
                 return;
             }
 
-            EmitDiagnostic(CorporateLogDiagnosticEventType.ShutdownStarted,
+            EmitDiagnostic(YumalogDiagnosticEventType.ShutdownStarted,
                 "Logger shutdown started. Buffered events are being flushed.");
 
             try
@@ -118,12 +118,12 @@ namespace Yumalog.Implementation
                 _logger.Dispose();
                 _disposed = true;
 
-                EmitDiagnostic(CorporateLogDiagnosticEventType.ShutdownCompleted,
+                EmitDiagnostic(YumalogDiagnosticEventType.ShutdownCompleted,
                     "Logger shutdown completed successfully.");
             }
             catch (Exception ex)
             {
-                EmitDiagnostic(CorporateLogDiagnosticEventType.ShutdownFailed,
+                EmitDiagnostic(YumalogDiagnosticEventType.ShutdownFailed,
                     "Logger shutdown failed before all buffered events could be flushed.",
                     ex);
                 throw;
@@ -131,7 +131,7 @@ namespace Yumalog.Implementation
         }
 
         private void EmitDiagnostic(
-            CorporateLogDiagnosticEventType eventType,
+            YumalogDiagnosticEventType eventType,
             string message,
             Exception exception = null)
         {
@@ -141,7 +141,7 @@ namespace Yumalog.Implementation
                 return;
             }
 
-            listener(new CorporateLogDiagnosticEvent(
+            listener(new YumalogDiagnosticEvent(
                 eventType,
                 _applicationName,
                 _logDirectory,

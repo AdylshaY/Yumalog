@@ -7,20 +7,20 @@ namespace Yumalog.Implementation
     /// <summary>
     /// ASP.NET Core logger implementation that forwards to the shared Yumalog runtime.
     /// </summary>
-    internal sealed class CorporateMicrosoftLogger : ILogger
+    internal sealed class YumalogMicrosoftLogger : ILogger
     {
         private const string OriginalFormatPropertyName = "{OriginalFormat}";
         private readonly string _categoryName;
-        private readonly CorporateLogRuntime _runtime;
-        private readonly CorporateScopeProvider _scopeProvider;
+        private readonly YumalogRuntime _runtime;
+        private readonly YumalogScopeProvider _scopeProvider;
 
         /// <summary>
         /// Initializes a new category-specific logger instance.
         /// </summary>
-        public CorporateMicrosoftLogger(
+        public YumalogMicrosoftLogger(
             string categoryName,
-            CorporateLogRuntime runtime,
-            CorporateScopeProvider scopeProvider)
+            YumalogRuntime runtime,
+            YumalogScopeProvider scopeProvider)
         {
             _categoryName = categoryName;
             _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));

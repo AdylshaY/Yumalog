@@ -88,7 +88,25 @@ artifacts\packages\Yumalog.1.0.0.nupkg
 Install it into a test project from the local package folder:
 
 ```powershell
-dotnet add package Yumalog --source "C:\path\to\Yumalog\artifacts\packages"
+dotnet nuget add source "C:\path\to\Yumalog\artifacts\packages" --name YumalogLocal
+dotnet add package Yumalog --source YumalogLocal
+dotnet restore
+```
+
+This approach is more reliable than passing a folder path to multiple restore commands.
+The consuming project can continue using its existing NuGet sources such as `nuget.org` or private feeds, while Yumalog is resolved from the temporary local source.
+
+If the consuming project already has a `NuGet.config` that includes both the local package folder and the normal feeds, you can instead run:
+
+```powershell
+dotnet add package Yumalog
+dotnet restore
+```
+
+When you are done testing the local package, remove the temporary source:
+
+```powershell
+dotnet nuget remove source YumalogLocal
 ```
 
 If you rebuild the package multiple times while testing, use one of these approaches:
@@ -192,27 +210,27 @@ class Program
 {
     static void Main()
     {
-        CorporateLogManager.Initialize("MyWindowsService", "Production");
+        YumalogManager.Initialize("MyWindowsService", "Production");
 
         try
         {
-            var logger = CorporateLogManager.Current;
+            var logger = YumalogManager.Current;
             logger.LogInformation("Service started");
 
             ProcessOrders(logger);
         }
         catch (Exception ex)
         {
-            var logger = CorporateLogManager.Current;
+            var logger = YumalogManager.Current;
             logger.LogFatal("Service crashed", ex);
         }
         finally
         {
-            CorporateLogManager.Shutdown();
+            YumalogManager.Shutdown();
         }
     }
 
-    static void ProcessOrders(ICorporateLogger logger)
+    static void ProcessOrders(IYumalogLogger logger)
     {
         logger.LogInformation("Processing orders", new Dictionary<string, object>
         {
@@ -240,10 +258,10 @@ var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
     {
         // Simple initialization
-        services.AddCorporateLogging("MyWorkerService", "Production");
+        services.AddYumalog("MyWorkerService", "Production");
 
         // OR with configuration
-        services.AddCorporateLogging(config =>
+        services.AddYumalog(config =>
         {
             config.ApplicationName = "MyWorkerService";
             config.Environment = "Production";
@@ -280,7 +298,7 @@ using Yumalog.Extensions;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
-builder.Logging.AddCorporateLogging(builder.Configuration);
+builder.Logging.AddYumalog(builder.Configuration);
 
 builder.Services.AddControllers();
 
@@ -310,7 +328,7 @@ Category-specific rules are matched by exact category name or prefix. More speci
 }
 ```
 
-You can also bind a different section name, for example `builder.Logging.AddCorporateLogging(builder.Configuration, "Observability:Yumalog")`.
+You can also bind a different section name, for example `builder.Logging.AddYumalog(builder.Configuration, "Observability:Yumalog")`.
 
 **OrderProcessorWorker.cs**
 
@@ -324,9 +342,9 @@ using Yumalog.Abstractions;
 
 public class OrderProcessorWorker : BackgroundService
 {
-    private readonly ICorporateLogger _logger;
+    private readonly IYumalogLogger _logger;
 
-    public OrderProcessorWorker(ICorporateLogger logger)
+    public OrderProcessorWorker(IYumalogLogger logger)
     {
         _logger = logger;
     }
@@ -377,7 +395,7 @@ public class OrderProcessorWorker : BackgroundService
 
 ## API Reference
 
-### ICorporateLogger Interface
+### IYumalogLogger Interface
 
 All methods write through `Serilog.Sinks.Async`.
 Under normal operation this keeps file I/O off the caller thread.
@@ -445,7 +463,7 @@ logger.LogInformationObject("Order received", new
 
 ## Configuration Options
 
-### CorporateLogConfiguration
+### YumalogConfiguration
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -459,7 +477,7 @@ logger.LogInformationObject("Order received", new
 | `BlockWhenFull` | `bool` | `true` | Block when buffer full to prevent log loss |
 | `AsyncBufferMonitorInterval` | `TimeSpan` | `00:00:01` | Sampling interval for async buffer diagnostics |
 | `AsyncBufferWarningUsageThresholdPercentage` | `int` | `80` | High-usage warning threshold for async buffer diagnostics |
-| `DiagnosticListener` | `Action<CorporateLogDiagnosticEvent>` | `null` | Optional callback for logger lifecycle and buffer health events |
+| `DiagnosticListener` | `Action<YumalogDiagnosticEvent>` | `null` | Optional callback for logger lifecycle and buffer health events |
 
 **Derived Property:**
 
@@ -479,7 +497,7 @@ logger.LogInformationObject("Order received", new
 **Example:**
 
 ```csharp
-services.AddCorporateLogging(config =>
+services.AddYumalog(config =>
 {
     config.ApplicationName = "HighVolumeService";
     config.BufferSize = 100000;
@@ -491,7 +509,7 @@ services.AddCorporateLogging(config =>
 ### Custom Log Directory
 
 ```csharp
-services.AddCorporateLogging(config =>
+services.AddYumalog(config =>
 {
     config.ApplicationName = "PaymentsService";
     config.BaseLogDirectory = @"D:\ServiceLogs";
@@ -525,10 +543,10 @@ Diagnostics are most useful during pilot rollout, load testing, production troub
 
 ### How Diagnostics Work
 
-If you provide a callback through `CorporateLogConfiguration.DiagnosticListener`, Yumalog invokes it when important lifecycle or buffer-health events occur.
+If you provide a callback through `YumalogConfiguration.DiagnosticListener`, Yumalog invokes it when important lifecycle or buffer-health events occur.
 
 ```csharp
-services.AddCorporateLogging(config =>
+services.AddYumalog(config =>
 {
     config.ApplicationName = "OrderService";
     config.DiagnosticListener = diagnostic =>
@@ -545,7 +563,7 @@ services.AddCorporateLogging(config =>
 Legacy usage works the same way:
 
 ```csharp
-CorporateLogManager.Initialize(new CorporateLogConfiguration
+YumalogManager.Initialize(new YumalogConfiguration
 {
     ApplicationName = "LegacyService",
     DiagnosticListener = diagnostic =>
@@ -598,7 +616,7 @@ Each diagnostic event includes the following information:
 Use a lightweight, non-throwing callback and route diagnostics to a separate operational channel such as `Trace`, Windows Event Log, an internal metric sink, or a health telemetry stream.
 
 ```csharp
-services.AddCorporateLogging(config =>
+services.AddYumalog(config =>
 {
     config.ApplicationName = "OrdersService";
     config.BufferSize = 100000;
@@ -876,9 +894,9 @@ Get-Service "Grafana Alloy"
 Get-ChildItem "C:\ServiceLogs" -Recurse -Filter "*.json"
 
 # Test logging
-CorporateLogManager.Initialize("TestApp");
-CorporateLogManager.Current.LogInformation("Test message");
-CorporateLogManager.Shutdown();
+YumalogManager.Initialize("TestApp");
+YumalogManager.Current.LogInformation("Test message");
+YumalogManager.Shutdown();
 ```
 
 ---
@@ -934,14 +952,14 @@ logger.LogInformation("Order processed", new Dictionary<string, object>
 // Initialize at startup
 static void Main()
 {
-    CorporateLogManager.Initialize("MyApp");
+    YumalogManager.Initialize("MyApp");
     // application code
 }
 
 // Always flush before exit
 finally
 {
-    CorporateLogManager.Shutdown();
+    YumalogManager.Shutdown();
 }
 
 // Log exceptions with context
@@ -961,7 +979,7 @@ logger.LogInformationObject("Order details", new
 });
 
 // Use diagnostics during rollout and operations
-services.AddCorporateLogging(config =>
+services.AddYumalog(config =>
 {
     config.ApplicationName = "MyApp";
     config.DiagnosticListener = diagnostic =>
@@ -981,8 +999,8 @@ logger.LogInformation($"Order {orderId} processed");  // Not searchable
 // Don't forget to flush
 Main()
 {
-    CorporateLogManager.Initialize("MyApp");
-    // Missing: CorporateLogManager.Shutdown();
+    YumalogManager.Initialize("MyApp");
+    // Missing: YumalogManager.Shutdown();
 }
 
 // Don't log sensitive data
@@ -998,8 +1016,8 @@ for (int i = 0; i < 1000000; i++)
 }
 
 // Don't initialize multiple times
-CorporateLogManager.Initialize("App1");
-CorporateLogManager.Initialize("App2");  // Throws exception
+YumalogManager.Initialize("App1");
+YumalogManager.Initialize("App2");  // Throws exception
 
 // Don't do heavy or recursive work inside the diagnostic callback
 config.DiagnosticListener = diagnostic =>
@@ -1049,7 +1067,7 @@ icacls "C:\ServiceLogs" /grant "NT AUTHORITY\NETWORK SERVICE:(OI)(CI)M"
 
 **Reduce buffer size:**
 ```csharp
-services.AddCorporateLogging(config =>
+services.AddYumalog(config =>
 {
     config.ApplicationName = "MyApp";
     config.BufferSize = 10000;
@@ -1060,12 +1078,12 @@ services.AddCorporateLogging(config =>
 **Or inspect diagnostics before changing durability-related settings:**
 
 ```csharp
-services.AddCorporateLogging(config =>
+services.AddYumalog(config =>
 {
     config.ApplicationName = "MyApp";
     config.DiagnosticListener = diagnostic =>
     {
-        if (diagnostic.EventType == CorporateLogDiagnosticEventType.AsyncBufferHighUsage)
+        if (diagnostic.EventType == YumalogDiagnosticEventType.AsyncBufferHighUsage)
         {
             System.Diagnostics.Trace.WriteLine(
                 $"Buffer pressure detected: {diagnostic.BufferCount}/{diagnostic.BufferSize}");
@@ -1084,12 +1102,12 @@ If `AsyncBufferDroppedMessages` appears, logs were lost because the queue was fu
 **Use diagnostics to confirm orderly shutdown:**
 
 ```csharp
-services.AddCorporateLogging(config =>
+services.AddYumalog(config =>
 {
     config.ApplicationName = "MyApp";
     config.DiagnosticListener = diagnostic =>
     {
-        if (diagnostic.EventType == CorporateLogDiagnosticEventType.ShutdownCompleted)
+        if (diagnostic.EventType == YumalogDiagnosticEventType.ShutdownCompleted)
         {
             System.Diagnostics.Trace.WriteLine("Logger shutdown completed successfully.");
         }
@@ -1103,9 +1121,9 @@ services.AddCorporateLogging(config =>
 
 **Initialize only once:**
 ```csharp
-if (!CorporateLogManager.IsInitialized)
+if (!YumalogManager.IsInitialized)
 {
-    CorporateLogManager.Initialize("MyApp");
+    YumalogManager.Initialize("MyApp");
 }
 ```
 
@@ -1124,14 +1142,14 @@ public class LoggingTests : IDisposable
     [Fact]
     public void Initialize_WithValidAppName_Success()
     {
-        CorporateLogManager.Initialize("TestApp", "Development");
+        YumalogManager.Initialize("TestApp", "Development");
 
-        Assert.True(CorporateLogManager.IsInitialized);
+        Assert.True(YumalogManager.IsInitialized);
 
-        var logger = CorporateLogManager.Current;
+        var logger = YumalogManager.Current;
         logger.LogInformation("Test log");
 
-        CorporateLogManager.Shutdown();
+        YumalogManager.Shutdown();
     }
 
     [Fact]
@@ -1139,15 +1157,15 @@ public class LoggingTests : IDisposable
     {
         Assert.Throws<ArgumentException>(() =>
         {
-            CorporateLogManager.Initialize("");
+            YumalogManager.Initialize("");
         });
     }
 
     public void Dispose()
     {
-        if (CorporateLogManager.IsInitialized)
+        if (YumalogManager.IsInitialized)
         {
-            CorporateLogManager.Shutdown();
+            YumalogManager.Shutdown();
         }
     }
 }

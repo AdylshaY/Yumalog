@@ -12,7 +12,7 @@ namespace Yumalog.Implementation
     {
         private readonly string _applicationName;
         private readonly string _logDirectory;
-        private readonly Action<CorporateLogDiagnosticEvent> _diagnosticListener;
+        private readonly Action<YumalogDiagnosticEvent> _diagnosticListener;
         private readonly TimeSpan _monitorInterval;
         private readonly int _warningUsageThresholdPercentage;
         private readonly object _sync = new object();
@@ -28,7 +28,7 @@ namespace Yumalog.Implementation
         public AsyncBufferDiagnosticMonitor(
             string applicationName,
             string logDirectory,
-            Action<CorporateLogDiagnosticEvent> diagnosticListener,
+            Action<YumalogDiagnosticEvent> diagnosticListener,
             TimeSpan monitorInterval,
             int warningUsageThresholdPercentage)
         {
@@ -56,7 +56,7 @@ namespace Yumalog.Implementation
             }
 
             EmitDiagnostic(
-                CorporateLogDiagnosticEventType.AsyncBufferMonitoringStarted,
+                YumalogDiagnosticEventType.AsyncBufferMonitoringStarted,
                 "Async log buffer monitoring started.",
                 inspector.BufferSize,
                 inspector.Count,
@@ -77,7 +77,7 @@ namespace Yumalog.Implementation
             if (inspector != null)
             {
                 EmitDiagnostic(
-                    CorporateLogDiagnosticEventType.AsyncBufferMonitoringStopped,
+                    YumalogDiagnosticEventType.AsyncBufferMonitoringStopped,
                     "Async log buffer monitoring stopped.",
                     inspector.BufferSize,
                     inspector.Count,
@@ -111,7 +111,7 @@ namespace Yumalog.Implementation
                 if (!_warningActive)
                 {
                     EmitDiagnostic(
-                        CorporateLogDiagnosticEventType.AsyncBufferHighUsage,
+                        YumalogDiagnosticEventType.AsyncBufferHighUsage,
                         $"Async log buffer usage reached {usagePercentage}% of capacity.",
                         inspector.BufferSize,
                         inspector.Count,
@@ -128,7 +128,7 @@ namespace Yumalog.Implementation
             {
                 _lastDroppedMessagesCount = inspector.DroppedMessagesCount;
                 EmitDiagnostic(
-                    CorporateLogDiagnosticEventType.AsyncBufferDroppedMessages,
+                    YumalogDiagnosticEventType.AsyncBufferDroppedMessages,
                     "Async log buffer dropped messages because the queue reached capacity.",
                     inspector.BufferSize,
                     inspector.Count,
@@ -143,14 +143,14 @@ namespace Yumalog.Implementation
         }
 
         private void EmitDiagnostic(
-            CorporateLogDiagnosticEventType eventType,
+            YumalogDiagnosticEventType eventType,
             string message,
             int? bufferSize = null,
             int? bufferCount = null,
             long? droppedMessagesCount = null,
             Exception exception = null)
         {
-            _diagnosticListener(new CorporateLogDiagnosticEvent(
+            _diagnosticListener(new YumalogDiagnosticEvent(
                 eventType,
                 _applicationName,
                 _logDirectory,

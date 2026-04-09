@@ -3,7 +3,7 @@ namespace Yumalog.Diagnostics
     /// <summary>
     /// Identifies the type of lifecycle diagnostic emitted by Yumalog.
     /// </summary>
-    public enum CorporateLogDiagnosticEventType
+    public enum YumalogDiagnosticEventType
     {
         /// <summary>
         /// Async sink buffer monitoring has started.

@@ -19,7 +19,7 @@ namespace Yumalog.Extensions
         /// <param name="applicationName">The name of the application (required).</param>
         /// <param name="environment">Environment name. Auto-detected during validation when omitted.</param>
         /// <returns>The service collection for chaining.</returns>
-        public static IServiceCollection AddCorporateLogging(
+        public static IServiceCollection AddYumalog(
             this IServiceCollection services, 
             string applicationName, 
             string environment = null)
@@ -30,13 +30,13 @@ namespace Yumalog.Extensions
             if (string.IsNullOrWhiteSpace(applicationName))
                 throw new ArgumentException("Application name is required.", nameof(applicationName));
 
-            var configuration = new CorporateLogConfiguration
+            var configuration = new YumalogConfiguration
             {
                 ApplicationName = applicationName,
                 Environment = environment
             };
 
-            return AddCorporateLogging(services, configuration);
+            return AddYumalog(services, configuration);
         }
 
         /// <summary>
@@ -46,13 +46,13 @@ namespace Yumalog.Extensions
         /// <param name="configuration">The logging configuration.</param>
         /// <returns>The service collection for chaining.</returns>
         /// <remarks>
-        /// A single <see cref="SerilogCorporateLogger"/> instance is registered and then exposed through
-        /// <see cref="ICorporateLogger"/>. This allows the DI container to own disposal so buffered log
+        /// A single <see cref="SerilogYumalogLogger"/> instance is registered and then exposed through
+        /// <see cref="IYumalogLogger"/>. This allows the DI container to own disposal so buffered log
         /// events are flushed during an orderly host shutdown.
         /// </remarks>
-        public static IServiceCollection AddCorporateLogging(
+        public static IServiceCollection AddYumalog(
             this IServiceCollection services, 
-            CorporateLogConfiguration configuration)
+            YumalogConfiguration configuration)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
@@ -66,10 +66,10 @@ namespace Yumalog.Extensions
             services.AddSingleton(provider => LoggerFactory.CreateRuntime(configuration));
 
             // Register the concrete wrapper so the container tracks its IDisposable lifetime.
-            services.AddSingleton(provider => new SerilogCorporateLogger(provider.GetRequiredService<CorporateLogRuntime>()));
+            services.AddSingleton(provider => new SerilogYumalogLogger(provider.GetRequiredService<YumalogRuntime>()));
 
             // Expose the same singleton instance through the application-facing interface.
-            services.AddSingleton<ICorporateLogger>(provider => provider.GetRequiredService<SerilogCorporateLogger>());
+            services.AddSingleton<IYumalogLogger>(provider => provider.GetRequiredService<SerilogYumalogLogger>());
 
             return services;
         }
@@ -80,9 +80,9 @@ namespace Yumalog.Extensions
         /// <param name="services">The service collection.</param>
         /// <param name="configureOptions">Action to configure logging options.</param>
         /// <returns>The service collection for chaining.</returns>
-        public static IServiceCollection AddCorporateLogging(
+        public static IServiceCollection AddYumalog(
             this IServiceCollection services,
-            Action<CorporateLogConfiguration> configureOptions)
+            Action<YumalogConfiguration> configureOptions)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
@@ -90,11 +90,11 @@ namespace Yumalog.Extensions
             if (configureOptions == null)
                 throw new ArgumentNullException(nameof(configureOptions));
 
-            var configuration = new CorporateLogConfiguration();
+            var configuration = new YumalogConfiguration();
             configureOptions(configuration);
             configuration.Validate();
 
-            return AddCorporateLogging(services, configuration);
+            return AddYumalog(services, configuration);
         }
 
         /// <summary>
@@ -103,14 +103,14 @@ namespace Yumalog.Extensions
         /// <param name="services">The service collection.</param>
         /// <param name="configuration">The root configuration object.</param>
         /// <returns>The service collection for chaining.</returns>
-        public static IServiceCollection AddCorporateLogging(
+        public static IServiceCollection AddYumalog(
             this IServiceCollection services,
             IConfiguration configuration)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            return AddCorporateLogging(services, configuration, CorporateLogConfigurationBinder.DefaultSectionName);
+            return AddYumalog(services, configuration, YumalogConfigurationBinder.DefaultSectionName);
         }
 
         /// <summary>
@@ -120,7 +120,7 @@ namespace Yumalog.Extensions
         /// <param name="configuration">The root configuration object.</param>
         /// <param name="sectionName">The configuration section name.</param>
         /// <returns>The service collection for chaining.</returns>
-        public static IServiceCollection AddCorporateLogging(
+        public static IServiceCollection AddYumalog(
             this IServiceCollection services,
             IConfiguration configuration,
             string sectionName)
@@ -128,7 +128,7 @@ namespace Yumalog.Extensions
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            return AddCorporateLogging(services, CorporateLogConfigurationBinder.BindSection(configuration, sectionName));
+            return AddYumalog(services, YumalogConfigurationBinder.BindSection(configuration, sectionName));
         }
 
         /// <summary>
@@ -137,14 +137,14 @@ namespace Yumalog.Extensions
         /// <param name="services">The service collection.</param>
         /// <param name="section">The configuration section containing Yumalog settings.</param>
         /// <returns>The service collection for chaining.</returns>
-        public static IServiceCollection AddCorporateLogging(
+        public static IServiceCollection AddYumalog(
             this IServiceCollection services,
             IConfigurationSection section)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            return AddCorporateLogging(services, CorporateLogConfigurationBinder.Bind(section));
+            return AddYumalog(services, YumalogConfigurationBinder.Bind(section));
         }
     }
 }

@@ -5,7 +5,7 @@ namespace Yumalog.Diagnostics
     /// <summary>
     /// Represents a diagnostic notification emitted by Yumalog runtime components.
     /// </summary>
-    public sealed class CorporateLogDiagnosticEvent
+    public sealed class YumalogDiagnosticEvent
     {
         /// <summary>
         /// Creates a new diagnostic event payload.
@@ -15,8 +15,8 @@ namespace Yumalog.Diagnostics
         /// <param name="logDirectory">Application-specific log directory.</param>
         /// <param name="message">Human-readable diagnostic message.</param>
         /// <param name="exception">Optional exception associated with the diagnostic event.</param>
-        public CorporateLogDiagnosticEvent(
-            CorporateLogDiagnosticEventType eventType,
+        public YumalogDiagnosticEvent(
+            YumalogDiagnosticEventType eventType,
             string applicationName,
             string logDirectory,
             string message,
@@ -39,7 +39,7 @@ namespace Yumalog.Diagnostics
         /// <summary>
         /// Type of lifecycle event being reported.
         /// </summary>
-        public CorporateLogDiagnosticEventType EventType { get; }
+        public YumalogDiagnosticEventType EventType { get; }
 
         /// <summary>
         /// Application name associated with the logger instance.

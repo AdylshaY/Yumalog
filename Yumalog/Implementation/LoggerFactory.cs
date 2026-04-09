@@ -21,7 +21,7 @@ namespace Yumalog.Implementation
         /// </summary>
         /// <param name="configuration">Validated runtime settings for file output and buffering.</param>
         /// <returns>A configured Serilog logger that writes JSON files to the application log directory.</returns>
-        public static Logger CreateLogger(CorporateLogConfiguration configuration)
+        public static Logger CreateLogger(YumalogConfiguration configuration)
         {
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
@@ -62,10 +62,10 @@ namespace Yumalog.Implementation
         /// </summary>
         /// <param name="configuration">Validated runtime settings for file output and buffering.</param>
         /// <returns>A disposable runtime wrapper around the configured Serilog logger.</returns>
-        public static CorporateLogRuntime CreateRuntime(CorporateLogConfiguration configuration)
+        public static YumalogRuntime CreateRuntime(YumalogConfiguration configuration)
         {
             var serilogLogger = CreateLogger(configuration);
-            return new CorporateLogRuntime(
+            return new YumalogRuntime(
                 serilogLogger,
                 configuration.ApplicationName,
                 configuration.LogDirectory,
@@ -79,9 +79,9 @@ namespace Yumalog.Implementation
         /// </summary>
         /// <param name="configuration">Validated runtime settings for file output and buffering.</param>
         /// <returns>A disposable Yumalog logger instance.</returns>
-        public static SerilogCorporateLogger CreateCorporateLogger(CorporateLogConfiguration configuration)
+        public static SerilogYumalogLogger CreateYumalogLogger(YumalogConfiguration configuration)
         {
-            return new SerilogCorporateLogger(CreateRuntime(configuration));
+            return new SerilogYumalogLogger(CreateRuntime(configuration));
         }
 
         /// <summary>
@@ -109,7 +109,7 @@ namespace Yumalog.Implementation
             }
         }
 
-        private static IAsyncLogEventSinkMonitor CreateAsyncBufferDiagnosticMonitor(CorporateLogConfiguration configuration)
+        private static IAsyncLogEventSinkMonitor CreateAsyncBufferDiagnosticMonitor(YumalogConfiguration configuration)
         {
             if (configuration.DiagnosticListener == null)
             {
@@ -145,7 +145,7 @@ namespace Yumalog.Implementation
             }
         }
 
-        private static LogLevel GetSinkMinimumLogLevel(CorporateLogConfiguration configuration)
+        private static LogLevel GetSinkMinimumLogLevel(YumalogConfiguration configuration)
         {
             var minimumLogLevel = configuration.MinimumLogLevel;
 

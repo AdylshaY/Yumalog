@@ -6,16 +6,16 @@ namespace Yumalog.Implementation
     /// <summary>
     /// Bridges ASP.NET Core logging into the shared Yumalog runtime.
     /// </summary>
-    internal sealed class CorporateLoggerProvider : ILoggerProvider
+    internal sealed class YumalogLoggerProvider : ILoggerProvider
     {
-        private readonly CorporateLogRuntime _runtime;
-        private readonly CorporateScopeProvider _scopeProvider = new CorporateScopeProvider();
+        private readonly YumalogRuntime _runtime;
+        private readonly YumalogScopeProvider _scopeProvider = new YumalogScopeProvider();
 
         /// <summary>
         /// Initializes a new provider instance.
         /// </summary>
         /// <param name="runtime">Shared Yumalog runtime used for all created loggers.</param>
-        public CorporateLoggerProvider(CorporateLogRuntime runtime)
+        public YumalogLoggerProvider(YumalogRuntime runtime)
         {
             _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         }
@@ -23,7 +23,7 @@ namespace Yumalog.Implementation
         /// <inheritdoc />
         public ILogger CreateLogger(string categoryName)
         {
-            return new CorporateMicrosoftLogger(categoryName, _runtime, _scopeProvider);
+            return new YumalogMicrosoftLogger(categoryName, _runtime, _scopeProvider);
         }
 
         /// <inheritdoc />

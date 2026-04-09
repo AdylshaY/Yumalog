@@ -12,19 +12,19 @@ namespace Yumalog.Implementation
     /// Internal Yumalog logger implementation backed by Serilog.
     /// </summary>
     /// <remarks>
-    /// This class translates the application-facing <see cref="ICorporateLogger"/> contract into Serilog
+    /// This class translates the application-facing <see cref="IYumalogLogger"/> contract into Serilog
     /// write calls and guards against usage after shutdown. It is intentionally sealed because it is not
     /// designed as an inheritance-based extension point.
     /// </remarks>
-    internal sealed class SerilogCorporateLogger : ICorporateLogger, IDisposable
+    internal sealed class SerilogYumalogLogger : IYumalogLogger, IDisposable
     {
-        private readonly CorporateLogRuntime _runtime;
+        private readonly YumalogRuntime _runtime;
 
         /// <summary>
         /// Creates a new Yumalog wrapper around a configured Serilog logger.
         /// </summary>
         /// <param name="runtime">Shared runtime that owns the configured Serilog pipeline.</param>
-        public SerilogCorporateLogger(CorporateLogRuntime runtime)
+        public SerilogYumalogLogger(YumalogRuntime runtime)
         {
             _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         }

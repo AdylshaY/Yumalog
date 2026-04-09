@@ -7,7 +7,7 @@ namespace Yumalog.Implementation
     /// <summary>
     /// Tracks BeginScope values for the current asynchronous execution flow.
     /// </summary>
-    internal sealed class CorporateScopeProvider
+    internal sealed class YumalogScopeProvider
     {
         private readonly AsyncLocal<Scope> _currentScope = new AsyncLocal<Scope>();
 
@@ -53,10 +53,10 @@ namespace Yumalog.Implementation
 
         private sealed class Scope : IDisposable
         {
-            private readonly CorporateScopeProvider _provider;
+            private readonly YumalogScopeProvider _provider;
             private bool _disposed;
 
-            public Scope(CorporateScopeProvider provider, object state, Scope parent)
+            public Scope(YumalogScopeProvider provider, object state, Scope parent)
             {
                 _provider = provider;
                 State = state;

@@ -7,16 +7,16 @@ namespace Yumalog.Tests
     using Yumalog.Configuration;
 
     /// <summary>
-    /// Tests for CorporateLogConfiguration validation and default values.
+    /// Tests for YumalogConfiguration validation and default values.
     /// </summary>
-    [Collection("CorporateLogManager Sequential Tests")]
-    public class CorporateLogConfigurationTests
+    [Collection("YumalogManager Sequential Tests")]
+    public class YumalogConfigurationTests
     {
         [Fact]
         public void Configuration_WithValidApplicationName_ShouldSucceed()
         {
             // Arrange & Act
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "TestApp"
             };
@@ -30,7 +30,7 @@ namespace Yumalog.Tests
         public void Configuration_DefaultValues_ShouldBeSetCorrectly()
         {
             // Arrange & Act
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "TestApp"
             };
@@ -47,7 +47,7 @@ namespace Yumalog.Tests
         public void Configuration_CustomValues_ShouldOverrideDefaults()
         {
             // Arrange & Act
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "TestApp",
                 Environment = "Staging",
@@ -74,7 +74,7 @@ namespace Yumalog.Tests
         public void Validate_WithValidApplicationName_ShouldNotThrowException()
         {
             // Arrange
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "ValidAppName"
             };
@@ -88,7 +88,7 @@ namespace Yumalog.Tests
         public void Validate_WithNullApplicationName_ShouldThrowArgumentException()
         {
             // Arrange
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = null
             };
@@ -103,7 +103,7 @@ namespace Yumalog.Tests
         public void Validate_WithEmptyApplicationName_ShouldThrowArgumentException()
         {
             // Arrange
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = string.Empty
             };
@@ -118,7 +118,7 @@ namespace Yumalog.Tests
         public void Validate_WithWhitespaceApplicationName_ShouldThrowArgumentException()
         {
             // Arrange
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "   "
             };
@@ -133,7 +133,7 @@ namespace Yumalog.Tests
         public void LogDirectory_ShouldCombineBaseDirectoryAndApplicationName()
         {
             // Arrange & Act
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "MyCustomApp"
             };
@@ -148,7 +148,7 @@ namespace Yumalog.Tests
         public void BaseLogDirectory_ShouldDefaultToCorporatePath()
         {
             // Arrange & Act
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "TestApp"
             };
@@ -160,7 +160,7 @@ namespace Yumalog.Tests
         [Fact]
         public void LogDirectory_WithCustomBaseLogDirectory_ShouldBuildCorrectPath()
         {
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "MyCustomApp",
                 BaseLogDirectory = @"D:\CustomLogs"
@@ -177,7 +177,7 @@ namespace Yumalog.Tests
         public void LogDirectory_WithDifferentApplicationNames_ShouldBuildCorrectPath(string appName)
         {
             // Arrange & Act
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = appName
             };
@@ -190,7 +190,7 @@ namespace Yumalog.Tests
         public void Environment_WhenExplicitlySet_ShouldReturnSetValue()
         {
             // Arrange & Act
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "TestApp",
                 Environment = "Production"
@@ -211,7 +211,7 @@ namespace Yumalog.Tests
         public void Environment_WhenNotSet_ShouldReturnNullBeforeValidation()
         {
             // Arrange & Act
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "TestApp"
                 // Environment not set
@@ -225,7 +225,7 @@ namespace Yumalog.Tests
         public void Environment_WhenNotSetAndValidated_ShouldAutoDetect()
         {
             // Arrange
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "TestApp"
                 // Environment not set - will auto-detect during Validate()
@@ -244,7 +244,7 @@ namespace Yumalog.Tests
         public void Environment_WhenExplicitlySet_ShouldRetainValueAfterValidation()
         {
             // Arrange
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "TestApp",
                 Environment = "CustomEnvironment"
@@ -261,7 +261,7 @@ namespace Yumalog.Tests
         [Fact]
         public void Validate_WithCustomAbsoluteBaseLogDirectory_ShouldNotThrowException()
         {
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "TestApp",
                 BaseLogDirectory = @"D:\ServiceLogs"
@@ -275,7 +275,7 @@ namespace Yumalog.Tests
         [Fact]
         public void Validate_WithRelativeBaseLogDirectory_ShouldThrowArgumentException()
         {
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "TestApp",
                 BaseLogDirectory = "RelativeLogs"
@@ -290,7 +290,7 @@ namespace Yumalog.Tests
         [Fact]
         public void Validate_WithRollingIntervalDaysOtherThanOne_ShouldThrowArgumentOutOfRangeException()
         {
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "TestApp",
                 RollingIntervalDays = 7
@@ -306,7 +306,7 @@ namespace Yumalog.Tests
         public void BufferSize_WithLargeValue_ShouldBeAllowed()
         {
             // Arrange & Act
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "TestApp",
                 BufferSize = 100000 // Large buffer for high-volume scenarios
@@ -320,7 +320,7 @@ namespace Yumalog.Tests
         public void FileSizeLimitBytes_WithDefaultValue_ShouldBe100MB()
         {
             // Arrange & Act
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "TestApp"
             };
@@ -333,7 +333,7 @@ namespace Yumalog.Tests
         public void FileSizeLimitBytes_WithNullValue_ShouldAllowUnlimitedFileSize()
         {
             // Arrange & Act
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "TestApp",
                 FileSizeLimitBytes = null // No size limit
@@ -347,7 +347,7 @@ namespace Yumalog.Tests
         public void RetainedFileCountLimit_WithNullValue_ShouldRetainAllFiles()
         {
             // Arrange & Act
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "TestApp",
             };
@@ -360,7 +360,7 @@ namespace Yumalog.Tests
         public void RetainedFileCountLimit_WithCustomValue_ShouldRetainSpecifiedCount()
         {
             // Arrange & Act
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "TestApp",
                 RetainedFileCountLimit = 7
@@ -374,7 +374,7 @@ namespace Yumalog.Tests
         public void Configuration_WithMinimalSettings_ShouldBeValid()
         {
             // Arrange & Act
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = "MinimalApp"
                 // All other settings use defaults
@@ -402,7 +402,7 @@ namespace Yumalog.Tests
             var expectedRollingDays = 30;
 
             // Act
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = expectedAppName,
                 Environment = expectedEnvironment,

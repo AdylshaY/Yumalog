@@ -13,9 +13,9 @@ namespace Yumalog
     /// should prefer the Dependency Injection registration extensions so the host can own logger
     /// lifetime and shutdown flushing automatically.
     /// </remarks>
-    public static class CorporateLogManager
+    public static class YumalogManager
     {
-        private static ICorporateLogger _instance;
+        private static IYumalogLogger _instance;
         private static readonly object _lock = new object();
         private static bool _isInitialized = false;
         private static bool _processExitHandlerRegistered = false;
@@ -26,21 +26,21 @@ namespace Yumalog
         /// <exception cref="InvalidOperationException">
         /// Thrown when the manager has not been initialized.
         /// </exception>
-        public static ICorporateLogger Current
+        public static IYumalogLogger Current
         {
             get
             {
                 if (!_isInitialized)
                 {
                     throw new InvalidOperationException(
-                        "CorporateLogManager has not been initialized. Call Initialize() first.");
+                        "YumalogManager has not been initialized. Call Initialize() first.");
                 }
                 return _instance;
             }
         }
 
         /// <summary>
-        /// Initializes corporate logging using the minimum required settings.
+        /// Initializes Yumalog using the minimum required settings.
         /// </summary>
         /// <param name="applicationName">The name of the application (required).</param>
         /// <param name="environment">Environment name. Auto-detected during validation when omitted.</param>
@@ -56,16 +56,16 @@ namespace Yumalog
                 if (_isInitialized)
                 {
                     throw new InvalidOperationException(
-                        "CorporateLogManager has already been initialized. Call Shutdown() first to re-initialize.");
+                        "YumalogManager has already been initialized. Call Shutdown() first to re-initialize.");
                 }
 
-                var configuration = new CorporateLogConfiguration
+                var configuration = new YumalogConfiguration
                 {
                     ApplicationName = applicationName,
                     Environment = environment
                 };
 
-                _instance = LoggerFactory.CreateCorporateLogger(configuration);
+                _instance = LoggerFactory.CreateYumalogLogger(configuration);
                 _isInitialized = true;
 
                 // Register process exit handler for crash scenarios
@@ -74,10 +74,10 @@ namespace Yumalog
         }
 
         /// <summary>
-        /// Initializes corporate logging using a pre-built configuration object.
+        /// Initializes Yumalog using a pre-built configuration object.
         /// </summary>
         /// <param name="configuration">Configuration values used to create the underlying logger.</param>
-        public static void Initialize(CorporateLogConfiguration configuration)
+        public static void Initialize(YumalogConfiguration configuration)
         {
             if (configuration == null)
             {
@@ -89,10 +89,10 @@ namespace Yumalog
                 if (_isInitialized)
                 {
                     throw new InvalidOperationException(
-                        "CorporateLogManager has already been initialized. Call Shutdown() first to re-initialize.");
+                        "YumalogManager has already been initialized. Call Shutdown() first to re-initialize.");
                 }
 
-                _instance = LoggerFactory.CreateCorporateLogger(configuration);
+                _instance = LoggerFactory.CreateYumalogLogger(configuration);
                 _isInitialized = true;
 
                 // Register process exit handler for crash scenarios

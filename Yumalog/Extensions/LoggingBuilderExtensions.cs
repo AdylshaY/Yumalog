@@ -19,7 +19,7 @@ namespace Yumalog.Extensions
         /// <param name="applicationName">The name of the application (required).</param>
         /// <param name="environment">Environment name. Auto-detected during validation when omitted.</param>
         /// <returns>The logging builder for chaining.</returns>
-        public static ILoggingBuilder AddCorporateLogging(
+        public static ILoggingBuilder AddYumalog(
             this ILoggingBuilder builder,
             string applicationName,
             string environment = null)
@@ -30,7 +30,7 @@ namespace Yumalog.Extensions
             if (string.IsNullOrWhiteSpace(applicationName))
                 throw new ArgumentException("Application name is required.", nameof(applicationName));
 
-            return AddCorporateLogging(builder, new CorporateLogConfiguration
+            return AddYumalog(builder, new YumalogConfiguration
             {
                 ApplicationName = applicationName,
                 Environment = environment
@@ -47,9 +47,9 @@ namespace Yumalog.Extensions
         /// This registration keeps the standard <see cref="ILogger{TCategoryName}"/> application model intact
         /// while routing accepted log events through Yumalog's file-based Serilog pipeline.
         /// </remarks>
-        public static ILoggingBuilder AddCorporateLogging(
+        public static ILoggingBuilder AddYumalog(
             this ILoggingBuilder builder,
-            CorporateLogConfiguration configuration)
+            YumalogConfiguration configuration)
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
@@ -59,11 +59,11 @@ namespace Yumalog.Extensions
 
             configuration.Validate();
 
-            ServiceCollectionExtensions.AddCorporateLogging(builder.Services, configuration);
-            builder.Services.AddSingleton<CorporateLoggerProvider>(
-                provider => new CorporateLoggerProvider(provider.GetRequiredService<CorporateLogRuntime>()));
+            ServiceCollectionExtensions.AddYumalog(builder.Services, configuration);
+            builder.Services.AddSingleton<YumalogLoggerProvider>(
+                provider => new YumalogLoggerProvider(provider.GetRequiredService<YumalogRuntime>()));
             builder.Services.AddSingleton<ILoggerProvider>(
-                provider => provider.GetRequiredService<CorporateLoggerProvider>());
+                provider => provider.GetRequiredService<YumalogLoggerProvider>());
 
             return builder;
         }
@@ -74,9 +74,9 @@ namespace Yumalog.Extensions
         /// <param name="builder">The logging builder.</param>
         /// <param name="configureOptions">Action to configure logging options.</param>
         /// <returns>The logging builder for chaining.</returns>
-        public static ILoggingBuilder AddCorporateLogging(
+        public static ILoggingBuilder AddYumalog(
             this ILoggingBuilder builder,
-            Action<CorporateLogConfiguration> configureOptions)
+            Action<YumalogConfiguration> configureOptions)
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
@@ -84,11 +84,11 @@ namespace Yumalog.Extensions
             if (configureOptions == null)
                 throw new ArgumentNullException(nameof(configureOptions));
 
-            var configuration = new CorporateLogConfiguration();
+            var configuration = new YumalogConfiguration();
             configureOptions(configuration);
             configuration.Validate();
 
-            return AddCorporateLogging(builder, configuration);
+            return AddYumalog(builder, configuration);
         }
 
         /// <summary>
@@ -97,14 +97,14 @@ namespace Yumalog.Extensions
         /// <param name="builder">The logging builder.</param>
         /// <param name="configuration">The root configuration object.</param>
         /// <returns>The logging builder for chaining.</returns>
-        public static ILoggingBuilder AddCorporateLogging(
+        public static ILoggingBuilder AddYumalog(
             this ILoggingBuilder builder,
             IConfiguration configuration)
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
 
-            return AddCorporateLogging(builder, configuration, CorporateLogConfigurationBinder.DefaultSectionName);
+            return AddYumalog(builder, configuration, YumalogConfigurationBinder.DefaultSectionName);
         }
 
         /// <summary>
@@ -114,7 +114,7 @@ namespace Yumalog.Extensions
         /// <param name="configuration">The root configuration object.</param>
         /// <param name="sectionName">The configuration section name.</param>
         /// <returns>The logging builder for chaining.</returns>
-        public static ILoggingBuilder AddCorporateLogging(
+        public static ILoggingBuilder AddYumalog(
             this ILoggingBuilder builder,
             IConfiguration configuration,
             string sectionName)
@@ -122,7 +122,7 @@ namespace Yumalog.Extensions
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
 
-            return AddCorporateLogging(builder, CorporateLogConfigurationBinder.BindSection(configuration, sectionName));
+            return AddYumalog(builder, YumalogConfigurationBinder.BindSection(configuration, sectionName));
         }
 
         /// <summary>
@@ -131,14 +131,14 @@ namespace Yumalog.Extensions
         /// <param name="builder">The logging builder.</param>
         /// <param name="section">The configuration section containing Yumalog settings.</param>
         /// <returns>The logging builder for chaining.</returns>
-        public static ILoggingBuilder AddCorporateLogging(
+        public static ILoggingBuilder AddYumalog(
             this ILoggingBuilder builder,
             IConfigurationSection section)
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
 
-            return AddCorporateLogging(builder, CorporateLogConfigurationBinder.Bind(section));
+            return AddYumalog(builder, YumalogConfigurationBinder.Bind(section));
         }
     }
 }

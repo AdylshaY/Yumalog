@@ -12,7 +12,7 @@ namespace Yumalog.Abstractions
     /// temporarily if the in-memory queue is saturated. In Dependency Injection scenarios, the
     /// container owns logger disposal and shutdown flushing.
     /// </summary>
-    public interface ICorporateLogger
+    public interface IYumalogLogger
     {
         /// <summary>
         /// Writes an informational event.

@@ -14,16 +14,16 @@
     using Yumalog.Diagnostics;
 
     /// <summary>
-    /// Tests for actual logging functionality of CorporateLogManager.
+    /// Tests for actual logging functionality of YumalogManager.
     /// These tests verify that log messages are written correctly to files.
     /// </summary>
-    [Collection("CorporateLogManager Sequential Tests")]
-    public class CorporateLogManagerLoggingTests : IDisposable
+    [Collection("YumalogManager Sequential Tests")]
+    public class YumalogManagerLoggingTests : IDisposable
     {
         private readonly string _testAppName;
         private readonly string _testLogDirectory;
 
-        public CorporateLogManagerLoggingTests()
+        public YumalogManagerLoggingTests()
         {
             // Her test için benzersiz bir application name oluştur
             _testAppName = $"TestApp_{Guid.NewGuid():N}";
@@ -32,9 +32,9 @@
 
         public void Dispose()
         {
-            if (CorporateLogManager.IsInitialized)
+            if (YumalogManager.IsInitialized)
             {
-                CorporateLogManager.Shutdown();
+                YumalogManager.Shutdown();
             }
 
             Thread.Sleep(500);
@@ -54,12 +54,12 @@
         public void LogInformation_WithSimpleMessage_ShouldWriteToFile()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var message = "This is an information message";
 
             // Act
-            CorporateLogManager.Current.LogInformation(message);
-            CorporateLogManager.Shutdown(); // Flush logs
+            YumalogManager.Current.LogInformation(message);
+            YumalogManager.Shutdown(); // Flush logs
 
             // Assert
             var logContent = GetLatestLogFileContent();
@@ -71,7 +71,7 @@
         public void LogInformation_WithProperties_ShouldIncludePropertiesInLog()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var message = "User action performed";
             var properties = new Dictionary<string, object>
             {
@@ -81,8 +81,8 @@
             };
 
             // Act
-            CorporateLogManager.Current.LogInformation(message, properties);
-            CorporateLogManager.Shutdown();
+            YumalogManager.Current.LogInformation(message, properties);
+            YumalogManager.Shutdown();
 
             // Assert
             var logContent = GetLatestLogFileContent();
@@ -97,12 +97,12 @@
         public void LogWarning_ShouldWriteWarningLevel()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var message = "This is a warning";
 
             // Act
-            CorporateLogManager.Current.LogWarning(message);
-            CorporateLogManager.Shutdown();
+            YumalogManager.Current.LogWarning(message);
+            YumalogManager.Shutdown();
 
             // Assert
             var logContent = GetLatestLogFileContent();
@@ -114,13 +114,13 @@
         public void LogError_WithException_ShouldIncludeExceptionDetails()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var message = "An error occurred";
             var exception = new InvalidOperationException("Test exception");
 
             // Act
-            CorporateLogManager.Current.LogError(message, exception);
-            CorporateLogManager.Shutdown();
+            YumalogManager.Current.LogError(message, exception);
+            YumalogManager.Shutdown();
 
             // Assert
             var logContent = GetLatestLogFileContent();
@@ -134,7 +134,7 @@
         public void LogError_WithExceptionAndProperties_ShouldIncludeBoth()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var message = "Database error";
             var exception = new Exception("Connection timeout");
             var properties = new Dictionary<string, object>
@@ -144,8 +144,8 @@
             };
 
             // Act
-            CorporateLogManager.Current.LogError(message, exception, properties);
-            CorporateLogManager.Shutdown();
+            YumalogManager.Current.LogError(message, exception, properties);
+            YumalogManager.Shutdown();
 
             // Assert
             var logContent = GetLatestLogFileContent();
@@ -159,12 +159,12 @@
         public void LogDebug_ShouldWriteDebugLevel()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var message = "Debug information";
 
             // Act
-            CorporateLogManager.Current.LogDebug(message);
-            CorporateLogManager.Shutdown();
+            YumalogManager.Current.LogDebug(message);
+            YumalogManager.Shutdown();
 
             // Assert
             var logContent = GetLatestLogFileContent();
@@ -176,13 +176,13 @@
         public void LogFatal_WithException_ShouldWriteFatalLevel()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var message = "Critical system failure";
             var exception = new OutOfMemoryException("System out of memory");
 
             // Act
-            CorporateLogManager.Current.LogFatal(message, exception);
-            CorporateLogManager.Shutdown();
+            YumalogManager.Current.LogFatal(message, exception);
+            YumalogManager.Shutdown();
 
             // Assert
             var logContent = GetLatestLogFileContent();
@@ -195,7 +195,7 @@
         public void LogInformationObject_WithComplexObject_ShouldSerializeObject()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var message = "User data";
             var userData = new
             {
@@ -206,8 +206,8 @@
             };
 
             // Act
-            CorporateLogManager.Current.LogInformationObject(message, userData);
-            CorporateLogManager.Shutdown();
+            YumalogManager.Current.LogInformationObject(message, userData);
+            YumalogManager.Shutdown();
 
             // Assert
             var logContent = GetLatestLogFileContent();
@@ -221,13 +221,13 @@
         public void LogMultipleMessages_ShouldWriteAllMessages()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
 
             // Act
-            CorporateLogManager.Current.LogInformation("Message 1");
-            CorporateLogManager.Current.LogWarning("Message 2");
-            CorporateLogManager.Current.LogError("Message 3");
-            CorporateLogManager.Shutdown();
+            YumalogManager.Current.LogInformation("Message 1");
+            YumalogManager.Current.LogWarning("Message 2");
+            YumalogManager.Current.LogError("Message 3");
+            YumalogManager.Shutdown();
 
             // Assert
             var logContent = GetLatestLogFileContent();
@@ -240,12 +240,12 @@
         public void Logging_ShouldIncludeMachineName()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var expectedMachineName = Environment.MachineName;
 
             // Act
-            CorporateLogManager.Current.LogInformation("Test message");
-            CorporateLogManager.Shutdown();
+            YumalogManager.Current.LogInformation("Test message");
+            YumalogManager.Shutdown();
 
             // Assert
             var logContent = GetLatestLogFileContent();
@@ -257,11 +257,11 @@
         public void Logging_ShouldIncludeApplicationName()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
 
             // Act
-            CorporateLogManager.Current.LogInformation("Test message");
-            CorporateLogManager.Shutdown();
+            YumalogManager.Current.LogInformation("Test message");
+            YumalogManager.Shutdown();
 
             // Assert
             var logContent = GetLatestLogFileContent();
@@ -273,16 +273,16 @@
         public void Logging_WithCustomEnvironment_ShouldIncludeEnvironment()
         {
             // Arrange
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = _testAppName,
                 Environment = "Production"
             };
-            CorporateLogManager.Initialize(config);
+            YumalogManager.Initialize(config);
 
             // Act
-            CorporateLogManager.Current.LogInformation("Test message");
-            CorporateLogManager.Shutdown();
+            YumalogManager.Current.LogInformation("Test message");
+            YumalogManager.Shutdown();
 
             // Assert
             var logContent = GetLatestLogFileContent();
@@ -294,12 +294,12 @@
         public void Logging_ShouldIncludeProcessId()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var expectedProcessId = System.Diagnostics.Process.GetCurrentProcess().Id;
 
             // Act
-            CorporateLogManager.Current.LogInformation("Test message");
-            CorporateLogManager.Shutdown();
+            YumalogManager.Current.LogInformation("Test message");
+            YumalogManager.Shutdown();
 
             // Assert
             var logContent = GetLatestLogFileContent();
@@ -311,11 +311,11 @@
         public void LogFile_ShouldBeCreatedInCorrectDirectory()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
 
             // Act
-            CorporateLogManager.Current.LogInformation("Test message");
-            CorporateLogManager.Shutdown();
+            YumalogManager.Current.LogInformation("Test message");
+            YumalogManager.Shutdown();
 
             // Assert
             Directory.Exists(_testLogDirectory).Should().BeTrue();
@@ -327,11 +327,11 @@
         public void LogFile_ShouldHaveJsonFormat()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
 
             // Act
-            CorporateLogManager.Current.LogInformation("Test message");
-            CorporateLogManager.Shutdown();
+            YumalogManager.Current.LogInformation("Test message");
+            YumalogManager.Shutdown();
 
             // Assert
             var logContent = GetLatestLogFileContent();
@@ -349,10 +349,10 @@
         public void LogWithNullProperties_ShouldNotThrowException()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
 
             // Act
-            Action act = () => CorporateLogManager.Current.LogInformation("Message", properties: null);
+            Action act = () => YumalogManager.Current.LogInformation("Message", properties: null);
 
             // Assert
             act.Should().NotThrow();
@@ -362,11 +362,11 @@
         public void LogWithEmptyProperties_ShouldNotThrowException()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var emptyProperties = new Dictionary<string, object>();
 
             // Act
-            Action act = () => CorporateLogManager.Current.LogInformation("Message", emptyProperties);
+            Action act = () => YumalogManager.Current.LogInformation("Message", emptyProperties);
 
             // Assert
             act.Should().NotThrow();
@@ -376,7 +376,7 @@
         public void Shutdown_WithPendingLogsInBuffer_ShouldFlushAllLogs()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var messageCount = 1000; // Çok sayıda log mesajı
             var messages = new List<string>();
 
@@ -385,11 +385,11 @@
             {
                 var message = $"Log message number {i}";
                 messages.Add(message);
-                CorporateLogManager.Current.LogInformation(message);
+                YumalogManager.Current.LogInformation(message);
             }
 
             // Shutdown çağrılarak buffer'daki tüm loglar flush edilmeli
-            CorporateLogManager.Shutdown();
+            YumalogManager.Shutdown();
 
             // Assert - Tüm mesajların dosyaya yazıldığını kontrol et
             var logContent = GetLatestLogFileContent();
@@ -409,7 +409,7 @@
         public void Shutdown_WithLargeVolumeOfLogs_ShouldNotLoseAnyData()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var expectedLogCount = 5000; // Yüksek hacimli test
             var uniqueIdentifier = Guid.NewGuid().ToString(); // Benzersiz tanımlayıcı
 
@@ -422,22 +422,22 @@
                 switch (i % 4)
                 {
                     case 0:
-                        CorporateLogManager.Current.LogInformation(message);
+                        YumalogManager.Current.LogInformation(message);
                         break;
                     case 1:
-                        CorporateLogManager.Current.LogWarning(message);
+                        YumalogManager.Current.LogWarning(message);
                         break;
                     case 2:
-                        CorporateLogManager.Current.LogError(message);
+                        YumalogManager.Current.LogError(message);
                         break;
                     case 3:
-                        CorporateLogManager.Current.LogDebug(message);
+                        YumalogManager.Current.LogDebug(message);
                         break;
                 }
             }
 
             // Immediate shutdown - buffer'daki tüm loglar yazılmalı
-            CorporateLogManager.Shutdown();
+            YumalogManager.Shutdown();
 
             // Assert - Tüm logların yazıldığını say
             var logContent = GetLatestLogFileContent();
@@ -454,18 +454,18 @@
         public void MultipleShutdowns_ShouldNotLoseDataOrThrowException()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
 
             // Act - Logları yaz ve birden fazla shutdown çağır
-            CorporateLogManager.Current.LogInformation("Message 1");
-            CorporateLogManager.Current.LogWarning("Message 2");
-            CorporateLogManager.Current.LogError("Message 3");
+            YumalogManager.Current.LogInformation("Message 1");
+            YumalogManager.Current.LogWarning("Message 2");
+            YumalogManager.Current.LogError("Message 3");
 
             // İlk shutdown
-            CorporateLogManager.Shutdown();
+            YumalogManager.Shutdown();
 
             // İkinci shutdown (zaten kapatılmış) - exception fırlatmamalı
-            Action act = () => CorporateLogManager.Shutdown();
+            Action act = () => YumalogManager.Shutdown();
 
             // Assert
             act.Should().NotThrow("multiple shutdowns should be safe");
@@ -480,23 +480,23 @@
         public void RapidLogging_WithImmediateShutdown_ShouldFlushAllLogs()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var startMarker = $"START_{Guid.NewGuid()}";
             var endMarker = $"END_{Guid.NewGuid()}";
 
             // Act - Çok hızlı ardışık loglar (async buffer'ı test et)
-            CorporateLogManager.Current.LogInformation(startMarker);
+            YumalogManager.Current.LogInformation(startMarker);
 
             // 100 log mesajı hızlı bir şekilde ekle
             for (int i = 1; i <= 100; i++)
             {
-                CorporateLogManager.Current.LogInformation($"Rapid log {i}");
+                YumalogManager.Current.LogInformation($"Rapid log {i}");
             }
 
-            CorporateLogManager.Current.LogInformation(endMarker);
+            YumalogManager.Current.LogInformation(endMarker);
 
             // Hemen ardından shutdown (buffer henüz boşalmamış olabilir)
-            CorporateLogManager.Shutdown();
+            YumalogManager.Shutdown();
 
             // Assert - Başlangıç ve bitiş marker'ları mutlaka yazılmış olmalı
             var logContent = GetLatestLogFileContent();
@@ -511,7 +511,7 @@
         public void Logging_WithPropertiesAndImmediateShutdown_ShouldPreserveAllData()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var testGuid = Guid.NewGuid().ToString();
 
             // Act - Properties ile log yaz ve hemen kapat
@@ -523,10 +523,10 @@
                     { "Iteration", i },
                     { "Timestamp", DateTime.UtcNow }
                 };
-                CorporateLogManager.Current.LogInformation($"Property test {i}", properties);
+                YumalogManager.Current.LogInformation($"Property test {i}", properties);
             }
 
-            CorporateLogManager.Shutdown();
+            YumalogManager.Shutdown();
 
             // Assert - Tüm properties'lerin yazıldığını kontrol et
             var logContent = GetLatestLogFileContent();
@@ -541,12 +541,12 @@
         public void BufferOverflow_Scenario_ShouldStillWriteAllLogs()
         {
             // Arrange - Buffer size'dan daha fazla log yaz
-            var config = new CorporateLogConfiguration
+            var config = new YumalogConfiguration
             {
                 ApplicationName = _testAppName,
                 BufferSize = 1000 // Küçük buffer (test için)
             };
-            CorporateLogManager.Initialize(config);
+            YumalogManager.Initialize(config);
 
             var logCount = 50000; // Buffer'dan çok daha fazla
             var testMarker = $"OVERFLOW_TEST_{Guid.NewGuid()}";
@@ -554,10 +554,10 @@
             // Act - Buffer'ı aş
             for (int i = 0; i < logCount; i++)
             {
-                CorporateLogManager.Current.LogInformation($"{testMarker}_{i}");
+                YumalogManager.Current.LogInformation($"{testMarker}_{i}");
             }
 
-            CorporateLogManager.Shutdown();
+            YumalogManager.Shutdown();
 
             // Assert - Tüm loglar yazılmış olmalı
             var logContent = GetLatestLogFileContent();
@@ -572,21 +572,21 @@
         public void UnexpectedShutdown_WithoutExplicitFlush_ShouldStillWriteSomeLogs()
         {
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var criticalMessage = $"CRITICAL_{Guid.NewGuid()}";
 
             // Act - Log yaz ama Shutdown ÇAĞIRMA (crash simülasyonu)
-            CorporateLogManager.Current.LogInformation(criticalMessage);
+            YumalogManager.Current.LogInformation(criticalMessage);
 
             // Serilog async sink'in background thread'inin yazmasını bekle
             Thread.Sleep(1000); // Normal durumda async sink bir süre sonra yazar
 
             // Logger'ı dispose et (crash durumunda GC bunu yapabilir)
             // Not: Bu gerçek crash değil, ama en yakın simülasyon
-            if (CorporateLogManager.IsInitialized)
+            if (YumalogManager.IsInitialized)
             {
                 // Internal dispose'u tetikle
-                CorporateLogManager.Shutdown();
+                YumalogManager.Shutdown();
             }
 
             // Assert
@@ -602,11 +602,11 @@
             // Eğer process aniden kill edilirse, buffer'daki loglar kaybolur.
 
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var volatileMessage = $"VOLATILE_{Guid.NewGuid()}";
 
             // Act - Log yaz ve HEMEN bitir (flush yok, bekleme yok)
-            CorporateLogManager.Current.LogInformation(volatileMessage);
+            YumalogManager.Current.LogInformation(volatileMessage);
 
             // Hiç bekleme yapmadan logger'ı kapat (crash simülasyonu)
             // NOT: Bu senaryoda loglar kaybolabilir!
@@ -631,18 +631,18 @@
         public void Initialize_MultipleTimes_ShouldRegisterHandlerOnlyOnce()
         {
             // Arrange & Act - İlk initialize
-            CorporateLogManager.Initialize(_testAppName);
-            CorporateLogManager.Shutdown();
+            YumalogManager.Initialize(_testAppName);
+            YumalogManager.Shutdown();
 
             // İkinci initialize
             var secondAppName = $"TestApp2_{Guid.NewGuid():N}";
-            CorporateLogManager.Initialize(secondAppName);
+            YumalogManager.Initialize(secondAppName);
 
             // Assert - Handler'ların duplicate olmaması gerekir
             // (Bu internal behavior ama test edebiliriz)
-            CorporateLogManager.IsInitialized.Should().BeTrue();
+            YumalogManager.IsInitialized.Should().BeTrue();
 
-            Action act = () => CorporateLogManager.Current.LogInformation("Test");
+            Action act = () => YumalogManager.Current.LogInformation("Test");
             act.Should().NotThrow();
         }
 
@@ -653,15 +653,15 @@
             // Çünkü ProcessExit handler da aynı Shutdown mekanizmasını kullanır
 
             // Arrange
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var emergencyMessage = $"EMERGENCY_{Guid.NewGuid()}";
 
             // Act - Kritik log yaz ve hemen flush et
-            CorporateLogManager.Current.LogInformation(emergencyMessage);
-            CorporateLogManager.Current.LogError("Critical error before shutdown");
+            YumalogManager.Current.LogInformation(emergencyMessage);
+            YumalogManager.Current.LogError("Critical error before shutdown");
 
             // Shutdown (ProcessExit handler da aynı şeyi yapar)
-            CorporateLogManager.Shutdown();
+            YumalogManager.Shutdown();
 
             // Assert - Loglar mutlaka yazılmalı
             var logContent = GetLatestLogFileContent();
@@ -675,7 +675,7 @@
             const int writerCount = 8;
             const int messagesPerWriter = 250;
 
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var marker = $"LEGACY_CONCURRENT_FLUSH_{Guid.NewGuid():N}";
 
             var writerTasks = Enumerable.Range(0, writerCount)
@@ -683,13 +683,13 @@
                 {
                     for (var messageIndex = 0; messageIndex < messagesPerWriter; messageIndex++)
                     {
-                        CorporateLogManager.Current.LogInformation($"{marker}_{writerIndex}_{messageIndex}");
+                        YumalogManager.Current.LogInformation($"{marker}_{writerIndex}_{messageIndex}");
                     }
                 }))
                 .ToArray();
 
             Task.WaitAll(writerTasks);
-            CorporateLogManager.Shutdown();
+            YumalogManager.Shutdown();
 
             var logContent = GetLatestLogFileContent();
             var markerCount = CountMessagesContaining(logContent, marker);
@@ -704,7 +704,7 @@
             const int writerCount = 6;
             const int maxMessagesPerWriter = 1000;
 
-            CorporateLogManager.Initialize(_testAppName);
+            YumalogManager.Initialize(_testAppName);
             var marker = $"LEGACY_OVERLAP_{Guid.NewGuid():N}";
             var startGate = new ManualResetEventSlim(false);
             var acceptedMessageCount = 0;
@@ -719,7 +719,7 @@
                     {
                         try
                         {
-                            CorporateLogManager.Current.LogInformation($"{marker}_{writerIndex}_{messageIndex}");
+                            YumalogManager.Current.LogInformation($"{marker}_{writerIndex}_{messageIndex}");
                             Interlocked.Increment(ref acceptedMessageCount);
                         }
                         catch (InvalidOperationException ex) when (ex.Message.Contains("has not been initialized"))
@@ -741,7 +741,7 @@
 
             startGate.Set();
             Thread.Sleep(100);
-            CorporateLogManager.Shutdown();
+            YumalogManager.Shutdown();
             Task.WaitAll(writerTasks);
 
             unexpectedExceptions.Should().BeEmpty("legacy shutdown overlap should not produce unexpected writer exceptions");
@@ -756,19 +756,19 @@
         [Fact]
         public void Shutdown_WhenCalledExplicitly_ShouldEmitShutdownDiagnostics()
         {
-            var diagnostics = new List<CorporateLogDiagnosticEvent>();
-            CorporateLogManager.Initialize(new CorporateLogConfiguration
+            var diagnostics = new List<YumalogDiagnosticEvent>();
+            YumalogManager.Initialize(new YumalogConfiguration
             {
                 ApplicationName = _testAppName,
                 DiagnosticListener = diagnostics.Add
             });
 
-            CorporateLogManager.Current.LogInformation("Legacy diagnostic shutdown test");
-            CorporateLogManager.Shutdown();
+            YumalogManager.Current.LogInformation("Legacy diagnostic shutdown test");
+            YumalogManager.Shutdown();
 
             diagnostics.Select(d => d.EventType).Should().ContainInOrder(
-                CorporateLogDiagnosticEventType.ShutdownStarted,
-                CorporateLogDiagnosticEventType.ShutdownCompleted);
+                YumalogDiagnosticEventType.ShutdownStarted,
+                YumalogDiagnosticEventType.ShutdownCompleted);
 
             diagnostics.Should().OnlyContain(d => d.ApplicationName == _testAppName);
             diagnostics.Should().OnlyContain(d => d.LogDirectory == _testLogDirectory);

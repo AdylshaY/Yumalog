@@ -45,10 +45,10 @@ namespace Yumalog.Tests
         }
 
         [Fact]
-        public void AddCorporateLogging_WhenProviderIsDisposed_ShouldFlushBufferedLogs()
+        public void AddYumalog_WhenProviderIsDisposed_ShouldFlushBufferedLogs()
         {
             var services = new ServiceCollection();
-            services.AddCorporateLogging(new CorporateLogConfiguration
+            services.AddYumalog(new YumalogConfiguration
             {
                 ApplicationName = _testAppName,
                 BaseLogDirectory = _testBaseDirectory,
@@ -56,7 +56,7 @@ namespace Yumalog.Tests
             });
 
             var provider = services.BuildServiceProvider();
-            var logger = provider.GetRequiredService<ICorporateLogger>();
+            var logger = provider.GetRequiredService<IYumalogLogger>();
             var marker = $"DI_FLUSH_{Guid.NewGuid():N}";
 
             for (var index = 0; index < 500; index++)
@@ -72,17 +72,17 @@ namespace Yumalog.Tests
         }
 
         [Fact]
-        public void AddCorporateLogging_WhenProviderIsDisposed_ShouldDisposeLoggerInstance()
+        public void AddYumalog_WhenProviderIsDisposed_ShouldDisposeLoggerInstance()
         {
             var services = new ServiceCollection();
-            services.AddCorporateLogging(new CorporateLogConfiguration
+            services.AddYumalog(new YumalogConfiguration
             {
                 ApplicationName = _testAppName,
                 BaseLogDirectory = _testBaseDirectory
             });
 
             var provider = services.BuildServiceProvider();
-            var logger = provider.GetRequiredService<ICorporateLogger>();
+            var logger = provider.GetRequiredService<IYumalogLogger>();
 
             provider.Dispose();
 
@@ -91,17 +91,17 @@ namespace Yumalog.Tests
         }
 
         [Fact]
-        public void AddCorporateLogging_WithCustomBaseDirectory_ShouldWriteLogsToThatDirectory()
+        public void AddYumalog_WithCustomBaseDirectory_ShouldWriteLogsToThatDirectory()
         {
             var services = new ServiceCollection();
-            services.AddCorporateLogging(new CorporateLogConfiguration
+            services.AddYumalog(new YumalogConfiguration
             {
                 ApplicationName = _testAppName,
                 BaseLogDirectory = _testBaseDirectory
             });
 
             using var provider = services.BuildServiceProvider();
-            var logger = provider.GetRequiredService<ICorporateLogger>();
+            var logger = provider.GetRequiredService<IYumalogLogger>();
             logger.LogInformation("Custom path test");
 
             provider.Dispose();
@@ -111,14 +111,14 @@ namespace Yumalog.Tests
         }
 
         [Fact]
-        public void AddCorporateLogging_WhenBaseDirectoryCannotBeWritten_ShouldFailFast()
+        public void AddYumalog_WhenBaseDirectoryCannotBeWritten_ShouldFailFast()
         {
             var invalidBasePath = Path.Combine(_testBaseDirectory, "blocked-root.txt");
             Directory.CreateDirectory(_testBaseDirectory);
             File.WriteAllText(invalidBasePath, "blocking file");
 
             var services = new ServiceCollection();
-            services.AddCorporateLogging(new CorporateLogConfiguration
+            services.AddYumalog(new YumalogConfiguration
             {
                 ApplicationName = _testAppName,
                 BaseLogDirectory = invalidBasePath
@@ -126,20 +126,20 @@ namespace Yumalog.Tests
 
             using var provider = services.BuildServiceProvider();
 
-            Action act = () => provider.GetRequiredService<ICorporateLogger>();
+            Action act = () => provider.GetRequiredService<IYumalogLogger>();
 
             act.Should().Throw<InvalidOperationException>()
                 .WithMessage("*could not be created or written to*");
         }
 
         [Fact]
-        public void AddCorporateLogging_WithConcurrentWritersAndProviderDispose_ShouldFlushAllAcceptedLogs()
+        public void AddYumalog_WithConcurrentWritersAndProviderDispose_ShouldFlushAllAcceptedLogs()
         {
             const int writerCount = 8;
             const int messagesPerWriter = 250;
 
             var services = new ServiceCollection();
-            services.AddCorporateLogging(new CorporateLogConfiguration
+            services.AddYumalog(new YumalogConfiguration
             {
                 ApplicationName = _testAppName,
                 BaseLogDirectory = _testBaseDirectory,
@@ -147,7 +147,7 @@ namespace Yumalog.Tests
             });
 
             var provider = services.BuildServiceProvider();
-            var logger = provider.GetRequiredService<ICorporateLogger>();
+            var logger = provider.GetRequiredService<IYumalogLogger>();
             var marker = $"CONCURRENT_FLUSH_{Guid.NewGuid():N}";
 
             var writerTasks = Enumerable.Range(0, writerCount)
@@ -171,13 +171,13 @@ namespace Yumalog.Tests
         }
 
         [Fact]
-        public void AddCorporateLogging_WhenShutdownOverlapsActiveWriters_ShouldPersistEveryAcceptedMessage()
+        public void AddYumalog_WhenShutdownOverlapsActiveWriters_ShouldPersistEveryAcceptedMessage()
         {
             const int writerCount = 6;
             const int maxMessagesPerWriter = 1000;
 
             var services = new ServiceCollection();
-            services.AddCorporateLogging(new CorporateLogConfiguration
+            services.AddYumalog(new YumalogConfiguration
             {
                 ApplicationName = _testAppName,
                 BaseLogDirectory = _testBaseDirectory,
@@ -185,7 +185,7 @@ namespace Yumalog.Tests
             });
 
             var provider = services.BuildServiceProvider();
-            var logger = provider.GetRequiredService<ICorporateLogger>();
+            var logger = provider.GetRequiredService<IYumalogLogger>();
             var marker = $"OVERLAP_SHUTDOWN_{Guid.NewGuid():N}";
             var startGate = new ManualResetEventSlim(false);
             var acceptedMessageCount = 0;
@@ -231,11 +231,11 @@ namespace Yumalog.Tests
         }
 
         [Fact]
-        public void AddCorporateLogging_WhenProviderIsDisposed_ShouldEmitShutdownDiagnostics()
+        public void AddYumalog_WhenProviderIsDisposed_ShouldEmitShutdownDiagnostics()
         {
-            var diagnostics = new List<CorporateLogDiagnosticEvent>();
+            var diagnostics = new List<YumalogDiagnosticEvent>();
             var services = new ServiceCollection();
-            services.AddCorporateLogging(new CorporateLogConfiguration
+            services.AddYumalog(new YumalogConfiguration
             {
                 ApplicationName = _testAppName,
                 BaseLogDirectory = _testBaseDirectory,
@@ -243,24 +243,24 @@ namespace Yumalog.Tests
             });
 
             var provider = services.BuildServiceProvider();
-            var logger = provider.GetRequiredService<ICorporateLogger>();
+            var logger = provider.GetRequiredService<IYumalogLogger>();
             logger.LogInformation("Diagnostic shutdown test");
 
             provider.Dispose();
 
             diagnostics.Select(d => d.EventType).Should().ContainInOrder(
-                CorporateLogDiagnosticEventType.ShutdownStarted,
-                CorporateLogDiagnosticEventType.ShutdownCompleted);
+                YumalogDiagnosticEventType.ShutdownStarted,
+                YumalogDiagnosticEventType.ShutdownCompleted);
 
             diagnostics.Should().OnlyContain(d => d.ApplicationName == _testAppName);
             diagnostics.Should().OnlyContain(d => d.LogDirectory == _testLogDirectory);
         }
 
         [Fact]
-        public void AddCorporateLogging_WithLoggingBuilder_ShouldWriteILoggerMessagesToYumalogFiles()
+        public void AddYumalog_WithLoggingBuilder_ShouldWriteILoggerMessagesToYumalogFiles()
         {
             var services = new ServiceCollection();
-            services.AddLogging(builder => builder.AddCorporateLogging(new CorporateLogConfiguration
+            services.AddLogging(builder => builder.AddYumalog(new YumalogConfiguration
             {
                 ApplicationName = _testAppName,
                 BaseLogDirectory = _testBaseDirectory,
@@ -282,10 +282,10 @@ namespace Yumalog.Tests
         }
 
         [Fact]
-        public void AddCorporateLogging_WithLoggingBuilder_ShouldHonorMinimumLogLevel()
+        public void AddYumalog_WithLoggingBuilder_ShouldHonorMinimumLogLevel()
         {
             var services = new ServiceCollection();
-            services.AddLogging(builder => builder.AddCorporateLogging(new CorporateLogConfiguration
+            services.AddLogging(builder => builder.AddYumalog(new YumalogConfiguration
             {
                 ApplicationName = _testAppName,
                 BaseLogDirectory = _testBaseDirectory,
@@ -309,10 +309,10 @@ namespace Yumalog.Tests
         }
 
         [Fact]
-        public void AddCorporateLogging_WithLoggingBuilder_ShouldCaptureScopesAndExposeICorporateLogger()
+        public void AddYumalog_WithLoggingBuilder_ShouldCaptureScopesAndExposeIYumalogLogger()
         {
             var services = new ServiceCollection();
-            services.AddLogging(builder => builder.AddCorporateLogging(new CorporateLogConfiguration
+            services.AddLogging(builder => builder.AddYumalog(new YumalogConfiguration
             {
                 ApplicationName = _testAppName,
                 BaseLogDirectory = _testBaseDirectory,
@@ -321,7 +321,7 @@ namespace Yumalog.Tests
 
             using var provider = services.BuildServiceProvider();
             var logger = provider.GetRequiredService<ILogger<ServiceCollectionExtensionsTests>>();
-            var corporateLogger = provider.GetRequiredService<ICorporateLogger>();
+            var yumalogLogger = provider.GetRequiredService<IYumalogLogger>();
             var correlationId = Guid.NewGuid().ToString("N");
             var marker = $"MEL_SCOPE_{Guid.NewGuid():N}";
 
@@ -333,20 +333,20 @@ namespace Yumalog.Tests
                 logger.LogWarning("{Marker} scope test", marker);
             }
 
-            corporateLogger.LogInformation("Corporate logger remains available");
+            yumalogLogger.LogInformation("Yumalog logger remains available");
             provider.Dispose();
 
             var logContent = GetLatestLogFileContent();
             logContent.Should().Contain(marker);
             logContent.Should().Contain(correlationId);
-            logContent.Should().Contain("Corporate logger remains available");
+            logContent.Should().Contain("Yumalog logger remains available");
         }
 
         [Fact]
-        public void AddCorporateLogging_WithLoggingBuilder_ShouldWriteExceptionsAndEventMetadata()
+        public void AddYumalog_WithLoggingBuilder_ShouldWriteExceptionsAndEventMetadata()
         {
             var services = new ServiceCollection();
-            services.AddLogging(builder => builder.AddCorporateLogging(new CorporateLogConfiguration
+            services.AddLogging(builder => builder.AddYumalog(new YumalogConfiguration
             {
                 ApplicationName = _testAppName,
                 BaseLogDirectory = _testBaseDirectory,
@@ -377,10 +377,10 @@ namespace Yumalog.Tests
         }
 
         [Fact]
-        public void AddCorporateLogging_WithLoggingBuilder_ShouldHonorCategoryMinimumLogLevels()
+        public void AddYumalog_WithLoggingBuilder_ShouldHonorCategoryMinimumLogLevels()
         {
             var services = new ServiceCollection();
-            services.AddLogging(builder => builder.AddCorporateLogging(config =>
+            services.AddLogging(builder => builder.AddYumalog(config =>
             {
                 config.ApplicationName = _testAppName;
                 config.BaseLogDirectory = _testBaseDirectory;
@@ -411,10 +411,10 @@ namespace Yumalog.Tests
         }
 
         [Fact]
-        public void AddCorporateLogging_WithCategoryOverrides_ShouldKeepDirectCorporateLoggerOnGlobalMinimum()
+        public void AddYumalog_WithCategoryOverrides_ShouldKeepDirectYumalogLoggerOnGlobalMinimum()
         {
             var services = new ServiceCollection();
-            services.AddCorporateLogging(config =>
+            services.AddYumalog(config =>
             {
                 config.ApplicationName = _testAppName;
                 config.BaseLogDirectory = _testBaseDirectory;
@@ -424,12 +424,12 @@ namespace Yumalog.Tests
             });
 
             using var provider = services.BuildServiceProvider();
-            var corporateLogger = provider.GetRequiredService<ICorporateLogger>();
+            var yumalogLogger = provider.GetRequiredService<IYumalogLogger>();
             var suppressedMarker = $"CORPORATE_SUPPRESSED_{Guid.NewGuid():N}";
             var writtenMarker = $"CORPORATE_WRITTEN_{Guid.NewGuid():N}";
 
-            corporateLogger.LogInformation(suppressedMarker);
-            corporateLogger.LogError(writtenMarker);
+            yumalogLogger.LogInformation(suppressedMarker);
+            yumalogLogger.LogError(writtenMarker);
 
             provider.Dispose();
 
@@ -439,7 +439,7 @@ namespace Yumalog.Tests
         }
 
         [Fact]
-        public void AddCorporateLogging_WithConfigurationSection_ShouldBindSettingsForDirectUsage()
+        public void AddYumalog_WithConfigurationSection_ShouldBindSettingsForDirectUsage()
         {
             var configuration = CreateConfiguration(new Dictionary<string, string>
             {
@@ -450,10 +450,10 @@ namespace Yumalog.Tests
             });
 
             var services = new ServiceCollection();
-            services.AddCorporateLogging(configuration.GetSection("Yumalog"));
+            services.AddYumalog(configuration.GetSection("Yumalog"));
 
             using var provider = services.BuildServiceProvider();
-            var logger = provider.GetRequiredService<ICorporateLogger>();
+            var logger = provider.GetRequiredService<IYumalogLogger>();
             var suppressedMarker = $"CONFIG_DIRECT_INFO_{Guid.NewGuid():N}";
             var writtenMarker = $"CONFIG_DIRECT_ERROR_{Guid.NewGuid():N}";
 
@@ -467,7 +467,7 @@ namespace Yumalog.Tests
         }
 
         [Fact]
-        public void AddCorporateLogging_WithConfigurationRootOnLoggingBuilder_ShouldBindDefaultYumalogSection()
+        public void AddYumalog_WithConfigurationRootOnLoggingBuilder_ShouldBindDefaultYumalogSection()
         {
             var configuration = CreateConfiguration(new Dictionary<string, string>
             {
@@ -480,7 +480,7 @@ namespace Yumalog.Tests
             });
 
             var services = new ServiceCollection();
-            services.AddLogging(builder => builder.AddCorporateLogging(configuration));
+            services.AddLogging(builder => builder.AddYumalog(configuration));
 
             using var provider = services.BuildServiceProvider();
             var typedLogger = provider.GetRequiredService<ILogger<ServiceCollectionExtensionsTests>>();
@@ -499,7 +499,7 @@ namespace Yumalog.Tests
         }
 
         [Fact]
-        public void AddCorporateLogging_WithNamedConfigurationSection_ShouldBindAlternateSection()
+        public void AddYumalog_WithNamedConfigurationSection_ShouldBindAlternateSection()
         {
             var configuration = CreateConfiguration(new Dictionary<string, string>
             {
@@ -510,7 +510,7 @@ namespace Yumalog.Tests
             });
 
             var services = new ServiceCollection();
-            services.AddLogging(builder => builder.AddCorporateLogging(configuration, "Observability:Yumalog"));
+            services.AddLogging(builder => builder.AddYumalog(configuration, "Observability:Yumalog"));
 
             using var provider = services.BuildServiceProvider();
             var logger = provider.GetRequiredService<ILogger<ServiceCollectionExtensionsTests>>();
