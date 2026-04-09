@@ -1,6 +1,7 @@
 namespace Yumalog.Configuration
 {
     using System;
+    using Microsoft.Extensions.Logging;
     using Yumalog.Diagnostics;
 
     /// <summary>
@@ -102,6 +103,12 @@ namespace Yumalog.Configuration
         public bool BlockWhenFull { get; set; } = true;
 
         /// <summary>
+        /// Minimum log level accepted by both the application-facing Yumalog API and the
+        /// ASP.NET Core <see cref="ILogger"/> provider integration.
+        /// </summary>
+        public LogLevel MinimumLogLevel { get; set; } = LogLevel.Debug;
+
+        /// <summary>
         /// Interval used to sample async buffer health metrics when diagnostics are enabled.
         /// </summary>
         public TimeSpan AsyncBufferMonitorInterval
@@ -165,6 +172,12 @@ namespace Yumalog.Configuration
             {
                 throw new ArgumentOutOfRangeException(nameof(RollingIntervalDays),
                     "Yumalog currently supports only daily rolling. Set RollingIntervalDays to 1.");
+            }
+
+            if (MinimumLogLevel == LogLevel.None)
+            {
+                throw new ArgumentOutOfRangeException(nameof(MinimumLogLevel),
+                    "MinimumLogLevel must allow at least one log level. LogLevel.None is not supported.");
             }
 
             // Validate the application name before it is used as part of a directory path.

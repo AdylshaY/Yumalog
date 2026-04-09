@@ -1,0 +1,93 @@
+namespace Yumalog.Extensions
+{
+    using System;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Logging;
+    using Yumalog.Configuration;
+    using Yumalog.Implementation;
+
+    /// <summary>
+    /// ASP.NET Core logging builder extensions for using Yumalog as an <see cref="ILogger"/> backend.
+    /// </summary>
+    public static class LoggingBuilderExtensions
+    {
+        /// <summary>
+        /// Registers Yumalog as a Microsoft logging provider using the minimum required settings.
+        /// </summary>
+        /// <param name="builder">The logging builder.</param>
+        /// <param name="applicationName">The name of the application (required).</param>
+        /// <param name="environment">Environment name. Auto-detected during validation when omitted.</param>
+        /// <returns>The logging builder for chaining.</returns>
+        public static ILoggingBuilder AddCorporateLogging(
+            this ILoggingBuilder builder,
+            string applicationName,
+            string environment = null)
+        {
+            if (builder == null)
+                throw new ArgumentNullException(nameof(builder));
+
+            if (string.IsNullOrWhiteSpace(applicationName))
+                throw new ArgumentException("Application name is required.", nameof(applicationName));
+
+            return AddCorporateLogging(builder, new CorporateLogConfiguration
+            {
+                ApplicationName = applicationName,
+                Environment = environment
+            });
+        }
+
+        /// <summary>
+        /// Registers Yumalog as a Microsoft logging provider using a pre-built configuration object.
+        /// </summary>
+        /// <param name="builder">The logging builder.</param>
+        /// <param name="configuration">The logging configuration.</param>
+        /// <returns>The logging builder for chaining.</returns>
+        /// <remarks>
+        /// This registration keeps the standard <see cref="ILogger{TCategoryName}"/> application model intact
+        /// while routing accepted log events through Yumalog's file-based Serilog pipeline.
+        /// </remarks>
+        public static ILoggingBuilder AddCorporateLogging(
+            this ILoggingBuilder builder,
+            CorporateLogConfiguration configuration)
+        {
+            if (builder == null)
+                throw new ArgumentNullException(nameof(builder));
+
+            if (configuration == null)
+                throw new ArgumentNullException(nameof(configuration));
+
+            configuration.Validate();
+
+            ServiceCollectionExtensions.AddCorporateLogging(builder.Services, configuration);
+            builder.Services.AddSingleton<CorporateLoggerProvider>(
+                provider => new CorporateLoggerProvider(provider.GetRequiredService<CorporateLogRuntime>()));
+            builder.Services.AddSingleton<ILoggerProvider>(
+                provider => provider.GetRequiredService<CorporateLoggerProvider>());
+
+            return builder;
+        }
+
+        /// <summary>
+        /// Registers Yumalog as a Microsoft logging provider using an inline configuration callback.
+        /// </summary>
+        /// <param name="builder">The logging builder.</param>
+        /// <param name="configureOptions">Action to configure logging options.</param>
+        /// <returns>The logging builder for chaining.</returns>
+        public static ILoggingBuilder AddCorporateLogging(
+            this ILoggingBuilder builder,
+            Action<CorporateLogConfiguration> configureOptions)
+        {
+            if (builder == null)
+                throw new ArgumentNullException(nameof(builder));
+
+            if (configureOptions == null)
+                throw new ArgumentNullException(nameof(configureOptions));
+
+            var configuration = new CorporateLogConfiguration();
+            configureOptions(configuration);
+            configuration.Validate();
+
+            return AddCorporateLogging(builder, configuration);
+        }
+    }
+}

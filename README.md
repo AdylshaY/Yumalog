@@ -264,6 +264,40 @@ var host = Host.CreateDefaultBuilder(args)
 await host.RunAsync();
 ```
 
+---
+
+### ASP.NET Core APIs With Existing ILogger Usage
+
+Use this mode when an API project already depends on `ILogger<T>` and you want Yumalog to become the backend provider without changing application code.
+
+**Program.cs**
+
+```csharp
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Hosting;
+using Yumalog.Extensions;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddCorporateLogging(config =>
+{
+    config.ApplicationName = "MyApi";
+    config.Environment = builder.Environment.EnvironmentName;
+    config.BaseLogDirectory = @"C:\ServiceLogs";
+    config.MinimumLogLevel = Microsoft.Extensions.Logging.LogLevel.Information;
+    config.BlockWhenFull = false;
+});
+
+builder.Services.AddControllers();
+
+var app = builder.Build();
+app.MapControllers();
+app.Run();
+```
+
+This registration keeps `ILogger<T>` intact for controllers, services, middleware, and framework logs while routing accepted events through Yumalog's file-based pipeline.
+
 **OrderProcessorWorker.cs**
 
 ```csharp

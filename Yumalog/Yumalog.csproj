@@ -7,8 +7,8 @@
     <Version>1.0.0</Version>
     <Authors>Adylsha Yumayev</Authors>
     <Company>Yumayev Dev</Company>
-    <Description>Centralized structured logging library for .NET Framework and .NET Core applications. Provides JSON-based logging with Grafana Loki integration via Grafana Alloy agent.</Description>
-    <PackageTags>logging;serilog;structured-logging;grafana;loki;centralized-logging;enterprise</PackageTags>
+    <Description>Structured logging library for .NET Framework, worker services, and ASP.NET Core APIs. Supports direct Yumalog usage and Microsoft.Extensions.Logging ILogger integration with JSON file output for Grafana Alloy and Loki pipelines.</Description>
+    <PackageTags>logging;ilogger;aspnetcore;serilog;structured-logging;grafana;loki;centralized-logging;enterprise</PackageTags>
     <PackageProjectUrl>https://github.com/AdylshaY/Yumalog</PackageProjectUrl>
     <RepositoryUrl>https://github.com/AdylshaY/Yumalog</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -18,6 +18,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.0.0" />
     <PackageReference Include="Serilog" Version="4.3.1" />
     <PackageReference Include="Serilog.Sinks.Async" Version="2.1.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />

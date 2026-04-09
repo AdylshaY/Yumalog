@@ -3,11 +3,9 @@ namespace Yumalog.Implementation
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using Serilog.Core;
     using Serilog.Events;
     using Serilog.Parsing;
     using Yumalog.Abstractions;
-    using Yumalog.Diagnostics;
 
     /// <summary>
     /// Internal Yumalog logger implementation backed by Serilog.
@@ -19,29 +17,15 @@ namespace Yumalog.Implementation
     /// </remarks>
     internal sealed class SerilogCorporateLogger : ICorporateLogger, IDisposable
     {
-        private readonly Logger _logger;
-        private readonly string _applicationName;
-        private readonly string _logDirectory;
-        private readonly Action<CorporateLogDiagnosticEvent> _diagnosticListener;
-        private bool _disposed;
+        private readonly CorporateLogRuntime _runtime;
 
         /// <summary>
         /// Creates a new Yumalog wrapper around a configured Serilog logger.
         /// </summary>
-        /// <param name="logger">Underlying Serilog logger instance.</param>
-        /// <param name="applicationName">Application name associated with the logger instance.</param>
-        /// <param name="logDirectory">Application-specific directory where logs are written.</param>
-        /// <param name="diagnosticListener">Optional lifecycle diagnostic callback.</param>
-        public SerilogCorporateLogger(
-            Logger logger,
-            string applicationName,
-            string logDirectory,
-            Action<CorporateLogDiagnosticEvent> diagnosticListener = null)
+        /// <param name="runtime">Shared runtime that owns the configured Serilog pipeline.</param>
+        public SerilogCorporateLogger(CorporateLogRuntime runtime)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _applicationName = applicationName ?? throw new ArgumentNullException(nameof(applicationName));
-            _logDirectory = logDirectory ?? throw new ArgumentNullException(nameof(logDirectory));
-            _diagnosticListener = diagnosticListener;
+            _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         }
 
         /// <inheritdoc />
@@ -78,7 +62,7 @@ namespace Yumalog.Implementation
         public void LogInformationObject(string message, object data)
         {
             ThrowIfDisposed();
-            _logger.Information("{Message} {@Data}", message, data);
+            _runtime.BaseLogger.Information("{Message} {@Data}", message, data);
         }
 
         /// <summary>
@@ -86,38 +70,18 @@ namespace Yumalog.Implementation
         /// </summary>
         public void Dispose()
         {
-            if (_disposed)
-            {
-                return;
-            }
-
-            EmitDiagnostic(CorporateLogDiagnosticEventType.ShutdownStarted,
-                "Logger shutdown started. Buffered events are being flushed.");
-
-            try
-            {
-                _logger.Dispose();
-                _disposed = true;
-
-                EmitDiagnostic(CorporateLogDiagnosticEventType.ShutdownCompleted,
-                    "Logger shutdown completed successfully.");
-            }
-            catch (Exception ex)
-            {
-                EmitDiagnostic(CorporateLogDiagnosticEventType.ShutdownFailed,
-                    "Logger shutdown failed before all buffered events could be flushed.",
-                    ex);
-                throw;
-            }
+            _runtime.Dispose();
         }
 
         private void WriteLog(LogEventLevel level, string message, Exception exception, IDictionary<string, object> properties)
         {
             ThrowIfDisposed();
 
+            var logger = _runtime.BaseLogger;
+
             if (properties == null || properties.Count == 0)
             {
-                _logger.Write(level, exception, message);
+                logger.Write(level, exception, message);
                 return;
             }
 
@@ -134,34 +98,12 @@ namespace Yumalog.Implementation
                 messageTemplate,
                 logEventProperties);
 
-            _logger.Write(logEvent);
+            logger.Write(logEvent);
         }
 
         private void ThrowIfDisposed()
         {
-            if (_disposed)
-            {
-                throw new ObjectDisposedException(nameof(SerilogCorporateLogger));
-            }
-        }
-
-        private void EmitDiagnostic(
-            CorporateLogDiagnosticEventType eventType,
-            string message,
-            Exception exception = null)
-        {
-            var listener = _diagnosticListener;
-            if (listener == null)
-            {
-                return;
-            }
-
-            listener(new CorporateLogDiagnosticEvent(
-                eventType,
-                _applicationName,
-                _logDirectory,
-                message,
-                exception));
+            _runtime.ThrowIfDisposed();
         }
     }
 }

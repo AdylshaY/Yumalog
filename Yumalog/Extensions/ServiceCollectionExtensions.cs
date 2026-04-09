@@ -61,8 +61,11 @@ namespace Yumalog.Extensions
 
             configuration.Validate();
 
-            // Register the concrete singleton first so the container tracks its IDisposable lifetime.
-            services.AddSingleton(provider => LoggerFactory.CreateCorporateLogger(configuration));
+            // Register the shared runtime first so both legacy and ASP.NET Core integrations can reuse it.
+            services.AddSingleton(provider => LoggerFactory.CreateRuntime(configuration));
+
+            // Register the concrete wrapper so the container tracks its IDisposable lifetime.
+            services.AddSingleton(provider => new SerilogCorporateLogger(provider.GetRequiredService<CorporateLogRuntime>()));
 
             // Expose the same singleton instance through the application-facing interface.
             services.AddSingleton<ICorporateLogger>(provider => provider.GetRequiredService<SerilogCorporateLogger>());

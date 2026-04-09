@@ -9,6 +9,7 @@ namespace Yumalog.Tests
     using System.Threading.Tasks;
     using FluentAssertions;
     using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Logging;
     using Xunit;
     using Yumalog.Abstractions;
     using Yumalog.Configuration;
@@ -252,6 +253,126 @@ namespace Yumalog.Tests
 
             diagnostics.Should().OnlyContain(d => d.ApplicationName == _testAppName);
             diagnostics.Should().OnlyContain(d => d.LogDirectory == _testLogDirectory);
+        }
+
+        [Fact]
+        public void AddCorporateLogging_WithLoggingBuilder_ShouldWriteILoggerMessagesToYumalogFiles()
+        {
+            var services = new ServiceCollection();
+            services.AddLogging(builder => builder.AddCorporateLogging(new CorporateLogConfiguration
+            {
+                ApplicationName = _testAppName,
+                BaseLogDirectory = _testBaseDirectory,
+                BufferSize = 1000
+            }));
+
+            using var provider = services.BuildServiceProvider();
+            var logger = provider.GetRequiredService<ILogger<ServiceCollectionExtensionsTests>>();
+            var marker = $"MEL_PROVIDER_{Guid.NewGuid():N}";
+
+            logger.LogInformation("{Marker} processed request {RequestId}", marker, 42);
+
+            provider.Dispose();
+
+            var logContent = GetLatestLogFileContent();
+            logContent.Should().Contain(marker);
+            logContent.Should().Contain("\"RequestId\":42");
+            logContent.Should().Contain(nameof(ServiceCollectionExtensionsTests));
+        }
+
+        [Fact]
+        public void AddCorporateLogging_WithLoggingBuilder_ShouldHonorMinimumLogLevel()
+        {
+            var services = new ServiceCollection();
+            services.AddLogging(builder => builder.AddCorporateLogging(new CorporateLogConfiguration
+            {
+                ApplicationName = _testAppName,
+                BaseLogDirectory = _testBaseDirectory,
+                BufferSize = 1000,
+                MinimumLogLevel = LogLevel.Warning
+            }));
+
+            using var provider = services.BuildServiceProvider();
+            var logger = provider.GetRequiredService<ILogger<ServiceCollectionExtensionsTests>>();
+            var suppressedMarker = $"MEL_SUPPRESSED_{Guid.NewGuid():N}";
+            var writtenMarker = $"MEL_WRITTEN_{Guid.NewGuid():N}";
+
+            logger.LogInformation("{Marker} should not be written", suppressedMarker);
+            logger.LogWarning("{Marker} should be written", writtenMarker);
+
+            provider.Dispose();
+
+            var logContent = GetLatestLogFileContent();
+            logContent.Should().NotContain(suppressedMarker);
+            logContent.Should().Contain(writtenMarker);
+        }
+
+        [Fact]
+        public void AddCorporateLogging_WithLoggingBuilder_ShouldCaptureScopesAndExposeICorporateLogger()
+        {
+            var services = new ServiceCollection();
+            services.AddLogging(builder => builder.AddCorporateLogging(new CorporateLogConfiguration
+            {
+                ApplicationName = _testAppName,
+                BaseLogDirectory = _testBaseDirectory,
+                BufferSize = 1000
+            }));
+
+            using var provider = services.BuildServiceProvider();
+            var logger = provider.GetRequiredService<ILogger<ServiceCollectionExtensionsTests>>();
+            var corporateLogger = provider.GetRequiredService<ICorporateLogger>();
+            var correlationId = Guid.NewGuid().ToString("N");
+            var marker = $"MEL_SCOPE_{Guid.NewGuid():N}";
+
+            using (logger.BeginScope(new Dictionary<string, object>
+            {
+                ["CorrelationId"] = correlationId
+            }))
+            {
+                logger.LogWarning("{Marker} scope test", marker);
+            }
+
+            corporateLogger.LogInformation("Corporate logger remains available");
+            provider.Dispose();
+
+            var logContent = GetLatestLogFileContent();
+            logContent.Should().Contain(marker);
+            logContent.Should().Contain(correlationId);
+            logContent.Should().Contain("Corporate logger remains available");
+        }
+
+        [Fact]
+        public void AddCorporateLogging_WithLoggingBuilder_ShouldWriteExceptionsAndEventMetadata()
+        {
+            var services = new ServiceCollection();
+            services.AddLogging(builder => builder.AddCorporateLogging(new CorporateLogConfiguration
+            {
+                ApplicationName = _testAppName,
+                BaseLogDirectory = _testBaseDirectory,
+                BufferSize = 1000
+            }));
+
+            using var provider = services.BuildServiceProvider();
+            var logger = provider.GetRequiredService<ILogger<ServiceCollectionExtensionsTests>>();
+            var marker = $"MEL_EXCEPTION_{Guid.NewGuid():N}";
+            var exception = new InvalidOperationException("Provider exception test");
+
+            logger.Log(
+                LogLevel.Error,
+                new EventId(77, "ProviderFailure"),
+                exception,
+                "{Marker} failed during pipeline step {Step}",
+                marker,
+                "serialize");
+
+            provider.Dispose();
+
+            var logContent = GetLatestLogFileContent();
+            logContent.Should().Contain(marker);
+            logContent.Should().Contain("Provider exception test");
+            logContent.Should().Contain("\"EventId\":77");
+            logContent.Should().Contain("ProviderFailure");
+            logContent.Should().Contain("serialize");
         }
 
         private static int CountMessagesContaining(string logContent, string marker)

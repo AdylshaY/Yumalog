@@ -2,6 +2,7 @@ namespace Yumalog.Implementation
 {
     using System;
     using System.IO;
+    using Microsoft.Extensions.Logging;
     using Serilog;
     using Serilog.Core;
     using Serilog.Formatting.Json;
@@ -36,7 +37,7 @@ namespace Yumalog.Implementation
             // Rolling is fixed to daily; validation rejects unsupported RollingIntervalDays values.
             // When BlockWhenFull is true, callers will wait instead of losing events during bursts.
             var logger = new LoggerConfiguration()
-                .MinimumLevel.Debug()
+                .MinimumLevel.Is(MapLogLevel(configuration.MinimumLogLevel))
                 .Enrich.WithProperty("Application", configuration.ApplicationName)
                 .Enrich.WithProperty("Environment", configuration.Environment)
                 .Enrich.WithProperty("MachineName", Environment.MachineName)
@@ -56,18 +57,30 @@ namespace Yumalog.Implementation
         }
 
         /// <summary>
+        /// Creates the shared runtime object used by both the legacy Yumalog API and the
+        /// Microsoft.Extensions.Logging provider integration.
+        /// </summary>
+        /// <param name="configuration">Validated runtime settings for file output and buffering.</param>
+        /// <returns>A disposable runtime wrapper around the configured Serilog logger.</returns>
+        public static CorporateLogRuntime CreateRuntime(CorporateLogConfiguration configuration)
+        {
+            var serilogLogger = CreateLogger(configuration);
+            return new CorporateLogRuntime(
+                serilogLogger,
+                configuration.ApplicationName,
+                configuration.LogDirectory,
+                configuration.MinimumLogLevel,
+                configuration.DiagnosticListener);
+        }
+
+        /// <summary>
         /// Creates the application-facing Yumalog wrapper around the configured Serilog instance.
         /// </summary>
         /// <param name="configuration">Validated runtime settings for file output and buffering.</param>
         /// <returns>A disposable Yumalog logger instance.</returns>
         public static SerilogCorporateLogger CreateCorporateLogger(CorporateLogConfiguration configuration)
         {
-            var serilogLogger = CreateLogger(configuration);
-            return new SerilogCorporateLogger(
-                serilogLogger,
-                configuration.ApplicationName,
-                configuration.LogDirectory,
-                configuration.DiagnosticListener);
+            return new SerilogCorporateLogger(CreateRuntime(configuration));
         }
 
         /// <summary>
@@ -108,6 +121,27 @@ namespace Yumalog.Implementation
                 configuration.DiagnosticListener,
                 configuration.AsyncBufferMonitorInterval,
                 configuration.AsyncBufferWarningUsageThresholdPercentage);
+        }
+
+        private static Serilog.Events.LogEventLevel MapLogLevel(LogLevel logLevel)
+        {
+            switch (logLevel)
+            {
+                case LogLevel.Trace:
+                case LogLevel.Debug:
+                    return Serilog.Events.LogEventLevel.Debug;
+                case LogLevel.Information:
+                    return Serilog.Events.LogEventLevel.Information;
+                case LogLevel.Warning:
+                    return Serilog.Events.LogEventLevel.Warning;
+                case LogLevel.Error:
+                    return Serilog.Events.LogEventLevel.Error;
+                case LogLevel.Critical:
+                    return Serilog.Events.LogEventLevel.Fatal;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(logLevel), logLevel,
+                        "Unsupported Microsoft.Extensions.Logging log level.");
+            }
         }
     }
 }
